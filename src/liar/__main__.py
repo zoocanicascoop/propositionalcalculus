@@ -1,4 +1,28 @@
 from . import *
+from random import choice
+from string import ascii_letters
+
+
+
+def random_variable():
+    return Var(choice("ABCDEGHIJKLMNOPQRSVWXYZ").upper())
+
+def random_variables(n: int):
+    vars = set()
+    while len(vars)<n:
+        vars.add(random_variable())
+    return vars
+
+def random_formula(formulas: set[Formula]=set()):
+    if formulas == set():
+        option = choice(['var', 'const' ])
+
+    option = choice(['unary', 'binary' ])
+    if option == 'unary':
+        op = choice(unary_operators)
+    elif option == 'binary':
+        op = choice(binary_operators)
+
 
 
 def main():
@@ -31,4 +55,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    print(random_variables(10))

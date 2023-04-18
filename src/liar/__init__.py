@@ -68,6 +68,7 @@ class Neg(FormulaBase, UnaryOperator):
     def semantics(self, value: bool) -> bool:
         return not value
 
+unary_operators = [Neg]
 
 class And(FormulaBase, BinaryOperator):
     symbol = "∧"
@@ -89,6 +90,7 @@ class Imp(FormulaBase, BinaryOperator):
     def semantics(self, left_value: bool, right_value: bool) -> bool:
         return (not left_value) or right_value
 
+binary_operators = [And, Or, Imp]
 
 def variables(f: Formula) -> set[Var]:
     if isinstance(f, Var):
