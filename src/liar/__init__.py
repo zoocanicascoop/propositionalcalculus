@@ -68,7 +68,9 @@ class Neg(FormulaBase, UnaryOperator):
     def semantics(self, value: bool) -> bool:
         return not value
 
+
 unary_operators = [Neg]
+
 
 class And(FormulaBase, BinaryOperator):
     symbol = "∧"
@@ -90,7 +92,9 @@ class Imp(FormulaBase, BinaryOperator):
     def semantics(self, left_value: bool, right_value: bool) -> bool:
         return (not left_value) or right_value
 
+
 binary_operators = [And, Or, Imp]
+
 
 def variables(f: Formula) -> set[Var]:
     if isinstance(f, Var):
@@ -261,6 +265,27 @@ def subs_imp(f: Formula) -> Formula:
         raise ValueError("UNREACHABLE")
 
 
+def simp_double_neg(f: Formula) -> Formula:
+    """
+    Simplifica las dobles negaciones en una fórmula
+    """
+    if isinstance(f, Var) or isinstance(f, Const):
+        return f
+    elif isinstance(f, Neg):
+        if isinstance(f.f, Neg):
+            return simp_double_neg(f.f.f)
+        else:
+            return Neg(simp_double_neg(f.f))
+    elif isinstance(f, And):
+        return And(simp_double_neg(f.left), simp_double_neg(f.right))
+    elif isinstance(f, Or):
+        return Or(simp_double_neg(f.left), simp_double_neg(f.right))
+    if isinstance(f, Imp):
+        return Imp(simp_double_neg(f.left), simp_double_neg(f.right))
+    else:
+        raise ValueError("UNREACHABLE")
+
+
 def push_neg(f: Formula) -> Formula:
     """
     Mete las negaciones todo lo dentro posible de una fórmula y simplifica las
@@ -336,3 +361,55 @@ def CNF(f: Formula) -> Formula:
     Devuelve la Forma Normal Conjuntiva de una fórmula.
     """
     return distribute_or(push_neg(subs_imp(f)))
+
+
+def CNF_list_of_sets(f: Formula) -> list[set[Formula]]:
+    f = CNF(f)
+    result: list[set[Formula]] = list()
+    current_set: set[Formula] = set()
+    i = 0
+    f_str = str(f)
+    while i < len(f_str):
+        if f_str[i] == "¬":
+            i += 1
+            if f_str[i] == "T":
+                current_set.add(Const.FALSE)
+            elif f_str[i] == "F":
+                current_set.add(Const.TRUE)
+            else:
+                current_set.add(Neg(Var(f_str[i])))
+        elif f_str[i] == "∧":
+            result.append(current_set)
+            current_set = set()
+        elif f_str[i] == "∨" or f_str[i] == "(" or f_str[i] == ")":
+            pass
+        else:
+            if f_str[i] == "T":
+                current_set.add(Const.TRUE)
+            elif f_str[i] == "F":
+                current_set.add(Const.FALSE)
+            else:
+                current_set.add(Var(f_str[i]))
+        i += 1
+    result.append(current_set)
+    return result
+
+
+def pretty_print_CNF_list_of_sets(cnf: list[set[Formula]]) -> str:
+    return "∧".join([f"({'∨'.join([ str(e) for e in list(disj)])})" for disj in cnf])
+
+
+def detect_tauto_inner(formulas: set[Formula]) -> bool:
+    affirmative = set()
+    negative = set()
+    for f in formulas:
+        if isinstance(f, Neg):
+            negative.add(f.f)
+        else:
+            affirmative.add(f)
+    return len(affirmative.intersection(negative)) > 0
+
+
+def detect_tauto(f: Formula) -> bool:
+    cnf = CNF_list_of_sets(f)
+    return all(map(detect_tauto_inner, cnf))
