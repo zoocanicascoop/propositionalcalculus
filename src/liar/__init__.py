@@ -12,6 +12,18 @@ class Formula:
     def __eq__(self, other):
         return str(self) == str(other)
 
+    def __invert__(self):
+        return Neg(self)
+
+    def __and__(self, other):
+        return And(self, other)
+
+    def __or__(self, other):
+        return Or(self, other)
+
+    def __rshift__(self, other):
+        return Imp(self, other)
+
     def __hash__(self):
         return hash(repr(self))
 
