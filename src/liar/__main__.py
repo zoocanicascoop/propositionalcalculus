@@ -60,7 +60,7 @@ if __name__ == "__main__":
         f = f.simp_double_neg
         print(f"{f = }")
         print(f"{is_tauto(f) = }")
-        print(f"CNF(f): {print_CNF_structured(f.CNF_structured)}")
+        print(f"CNF(f): {Formula.print_CNF_structured(f.CNF_structured)}")
         print(f"{f.is_tauto = }")
         assert is_tauto(f) == f.is_tauto, f"{f}"
         input("\n\n\n")
