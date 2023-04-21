@@ -1,5 +1,6 @@
 from typing import Tuple
 from enum import Enum
+from functools import cached_property
 
 
 class Formula:
@@ -26,6 +27,44 @@ class Formula:
 
     def __hash__(self):
         return hash(repr(self))
+
+    @cached_property
+    def vars(self) -> set['Var']:
+        """ Conjunto de variables presentes en la fórmula. """
+        if isinstance(self, Var):
+            return {self}
+        elif isinstance(self, Const):
+            return set()
+        elif isinstance(self, UnaryOperator):
+            return self.f.vars
+        elif isinstance(self, BinaryOperator):
+            return self.left.vars.union(self.right.vars)
+        else:
+            raise ValueError("UNREACHABLE")
+     
+    @cached_property
+    def consts(self) -> set['Const']:
+        """ Conjunto de constantes presentes en la fórmula. """
+        if isinstance(self, Var):
+            return set()
+        elif isinstance(self, Const):
+            return {self}
+        elif isinstance(self, UnaryOperator):
+            return self.f.consts
+        elif isinstance(self, BinaryOperator):
+            return self.left.consts.union(self.right.consts)
+        else:
+            raise ValueError("UNREACHABLE")
+
+    def __len__(self) -> int:
+        if isinstance(self, Var) or isinstance(self, Const):
+            return 1
+        elif isinstance(self, UnaryOperator):
+            return 1 + length(self.f)
+        elif isinstance(self, BinaryOperator):
+            return 1 + length(self.left) + length(self.right)
+        else:
+            raise ValueError("UNREACHABLE")
 
 
 class UnaryOperator(Formula):
@@ -108,18 +147,6 @@ class Imp(BinaryOperator):
 
 binary_operators = [And, Or, Imp]
 
-
-def variables(f: Formula) -> set[Var]:
-    if isinstance(f, Var):
-        return {f}
-    elif isinstance(f, Const):
-        return set()
-    elif isinstance(f, UnaryOperator):
-        return variables(f.f)
-    elif isinstance(f, BinaryOperator):
-        return variables(f.left).union(variables(f.right))
-    else:
-        raise ValueError("UNREACHABLE")
 
 
 def constants(f: Formula) -> set[Const]:

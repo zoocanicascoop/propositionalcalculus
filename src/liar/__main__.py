@@ -43,10 +43,12 @@ def main():
     f = (B & ~((A >> V) >> (A & B))) >> Const.FALSE
 
     print(f)
-    table = Table(f)
-    print(table)
-    print(pretty_print_CNF_list_of_sets(CNF_list_of_sets(f)))
-    print(detect_tauto(f))
+    print(f.vars)
+    print(len(A))
+    # table = Table(f)
+    # print(table)
+    # print(pretty_print_CNF_list_of_sets(CNF_list_of_sets(f)))
+    # print(detect_tauto(f))
 
 
 if __name__ == "__main__":
