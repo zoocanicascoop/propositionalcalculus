@@ -2,36 +2,6 @@ from . import *
 from random import choice
 
 
-def random_variable():
-    return Var(choice("ABCDEGHIJKLMNOPQRSVWXYZ").upper())
-
-
-def random_variables(n: int):
-    vars = set()
-    while len(vars) < n:
-        vars.add(random_variable())
-    return vars
-
-
-def random_formula(n_vars: int, n_iters: int):
-    formulas = random_variables(n_vars)
-    current_formula = None
-    for _ in range(n_iters):
-        option = choice(["unary", "binary"])
-        if option == "unary":
-            Op = choice(unary_operators)
-            f = choice(list(formulas))
-            current_formula = Op(f)
-        elif option == "binary":
-            Op = choice(binary_operators)
-            f1 = choice(list(formulas))
-            f2 = choice(list(formulas))
-            current_formula = Op(f1, f2)
-        # print(current_formula)
-        formulas.add(current_formula)
-    return current_formula
-
-
 def main():
     A = Var("A")
     B = Var("B")
@@ -55,7 +25,7 @@ def main():
 
 if __name__ == "__main__":
     for _ in range(1000):
-        f = random_formula(10, 100)
+        f = Formula.random(10, 100)
         assert isinstance(f, Formula)
         f = f.simp_double_neg
         print(f"{f = }")

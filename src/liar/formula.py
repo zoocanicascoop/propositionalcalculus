@@ -1,6 +1,7 @@
 from __future__ import annotations
 from enum import Enum
 from functools import cached_property
+from random import choice, sample
 
 
 class Formula:
@@ -37,6 +38,26 @@ class Formula:
             return 1 + len(self.left) + len(self.right)
         else:
             raise ValueError("UNREACHABLE")
+
+    @staticmethod
+    def random(n_vars: int, n_iters: int) -> Formula:
+        formulas: set[Var | Neg | And | Or | Imp] = Var.generate(n_vars)
+        current_formula = None
+        assert n_iters > 0, "El número de iteraciones debe ser positivo"
+        for _ in range(n_iters):
+            option = choice(["unary", "binary"])
+            if option == "unary":
+                Op = choice(unary_operators)
+                f = choice(list(formulas))
+                current_formula = Op(f)
+            elif option == "binary":
+                Op = choice(binary_operators)
+                f1, f2 = sample(list(formulas), 2)
+                current_formula = Op(f1, f2)
+            assert isinstance(current_formula, Formula)
+            formulas.add(current_formula)
+        assert isinstance(current_formula, Formula)
+        return current_formula
 
     @cached_property
     def vars(self) -> set["Var"]:
@@ -238,7 +259,9 @@ class Formula:
 
     @staticmethod
     def print_CNF_structured(cnf: list[set[Formula]]) -> str:
-        return "∧".join([f"({'∨'.join([ str(e) for e in list(disj)])})" for disj in cnf])
+        return "∧".join(
+            [f"({'∨'.join([ str(e) for e in list(disj)])})" for disj in cnf]
+        )
 
     @cached_property
     def is_tauto(self) -> bool:
@@ -282,6 +305,8 @@ class BinaryOperator(Formula):
 
 
 class Var(Formula):
+    var_names = "ABCDEGHIJKLMNOPQRSVWXYZ"
+
     def __init__(self, value: str):
         assert value.isupper(), "Las variables se representan con mayúsculas"
         assert len(value) == 1, "Las variables tienen que tener longitud uno"
@@ -292,6 +317,19 @@ class Var(Formula):
 
     def __repr__(self):
         return self.value
+
+    @staticmethod
+    def generate(n: int, random: bool = False) -> set[Var]:
+        """
+        Función que genera una lista de variables.
+
+        Si el parámetro random es cierto, escoje los nombres de las variables
+        aleatoriamente. En caso contrario los escoje en orden alfabético.
+        """
+        assert n <= len(
+            Var.var_names
+        ), "No hay suficientes nombres de variables para escojer"
+        return set(map(Var, sample(Var.var_names, n) if random else Var.var_names[0:n]))
 
 
 class Const(Formula, Enum):
@@ -330,5 +368,5 @@ class Imp(BinaryOperator):
         return (not left_value) or right_value
 
 
-unary_operators = [Neg]
-binary_operators = [And, Or, Imp]
+unary_operators: list[type[Neg]] = [Neg]
+binary_operators: list[type[And] | type[Or] | type[Imp]] = [And, Or, Imp]

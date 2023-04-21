@@ -1,4 +1,3 @@
-from typing import Tuple
 from functools import cached_property
 from .formula import Formula, Var, Const, UnaryOperator, BinaryOperator
 
@@ -49,7 +48,7 @@ class TableLine:
         return result
 
     @staticmethod
-    def table_line_rec(f: Formula, ass: Assign) -> Tuple[list[bool], int]:
+    def table_line_rec(f: Formula, ass: Assign) -> tuple[list[bool], int]:
         assert f.vars.issubset(set(ass.keys())), "La asignación no es correcta"
         if isinstance(f, Var):
             return ([ass[f]], 0)
