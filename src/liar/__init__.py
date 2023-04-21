@@ -1,12 +1,14 @@
 from typing import Tuple, Union
 from enum import Enum
 
-Formula = Union["Var", "Const", "Neg", "And", "Or", "Imp"]
 
 
-class FormulaBase:
+class Formula:
     def __str__(self):
         return repr(self)
+
+    def str_polish(self):
+        raise NotImplementedError()
 
     def __eq__(self, other):
         return str(self) == str(other)
@@ -41,7 +43,7 @@ class BinaryOperator:
         raise NotImplementedError()
 
 
-class Var(FormulaBase):
+class Var(Formula):
     def __init__(self, value: str):
         assert value.isupper(), "Las variables se representan con mayúsculas"
         assert len(value) == 1, "Las variables tienen que tener longitud uno"
@@ -54,7 +56,7 @@ class Var(FormulaBase):
         return self.value
 
 
-class Const(FormulaBase, Enum):
+class Const(Formula, Enum):
     FALSE = 0
     TRUE = 1
 
@@ -62,7 +64,7 @@ class Const(FormulaBase, Enum):
         return "F" if self.name == "FALSE" else "T"
 
 
-class Neg(FormulaBase, UnaryOperator):
+class Neg(Formula, UnaryOperator):
     symbol = "¬"
 
     def semantics(self, value: bool) -> bool:
@@ -72,21 +74,21 @@ class Neg(FormulaBase, UnaryOperator):
 unary_operators = [Neg]
 
 
-class And(FormulaBase, BinaryOperator):
+class And(Formula, BinaryOperator):
     symbol = "∧"
 
     def semantics(self, left_value: bool, right_value: bool) -> bool:
         return left_value and right_value
 
 
-class Or(FormulaBase, BinaryOperator):
+class Or(Formula, BinaryOperator):
     symbol = "∨"
 
     def semantics(self, left_value: bool, right_value: bool) -> bool:
         return left_value or right_value
 
 
-class Imp(FormulaBase, BinaryOperator):
+class Imp(Formula, BinaryOperator):
     symbol = "→"
 
     def semantics(self, left_value: bool, right_value: bool) -> bool:
