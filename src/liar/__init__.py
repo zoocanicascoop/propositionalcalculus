@@ -1,6 +1,7 @@
+from __future__ import annotations
 from typing import Tuple
 from enum import Enum
-from functools import cached_property
+from functools import cache, cached_property
 
 
 class Formula:
@@ -28,9 +29,19 @@ class Formula:
     def __hash__(self):
         return hash(repr(self))
 
+    def __len__(self) -> int:
+        if isinstance(self, Var) or isinstance(self, Const):
+            return 1
+        elif isinstance(self, UnaryOperator):
+            return 1 + len(self.f)
+        elif isinstance(self, BinaryOperator):
+            return 1 + len(self.left) + len(self.right)
+        else:
+            raise ValueError("UNREACHABLE")
+
     @cached_property
-    def vars(self) -> set['Var']:
-        """ Conjunto de variables presentes en la fórmula. """
+    def vars(self) -> set["Var"]:
+        """Conjunto de variables presentes en la fórmula."""
         if isinstance(self, Var):
             return {self}
         elif isinstance(self, Const):
@@ -41,10 +52,10 @@ class Formula:
             return self.left.vars.union(self.right.vars)
         else:
             raise ValueError("UNREACHABLE")
-     
+
     @cached_property
-    def consts(self) -> set['Const']:
-        """ Conjunto de constantes presentes en la fórmula. """
+    def consts(self) -> set["Const"]:
+        """Conjunto de constantes presentes en la fórmula."""
         if isinstance(self, Var):
             return set()
         elif isinstance(self, Const):
@@ -56,15 +67,189 @@ class Formula:
         else:
             raise ValueError("UNREACHABLE")
 
-    def __len__(self) -> int:
+    @cached_property
+    def simp_double_neg(self) -> Formula:
+        """
+        Función equivalente en la que se han elmiminado las dobles negaciones.
+        """
         if isinstance(self, Var) or isinstance(self, Const):
-            return 1
-        elif isinstance(self, UnaryOperator):
-            return 1 + len(self.f)
-        elif isinstance(self, BinaryOperator):
-            return 1 + len(self.left) + len(self.right)
+            return self
+        elif isinstance(self, Neg):
+            if isinstance(self.f, Neg):
+                return self.f.f.simp_double_neg
+            else:
+                return Neg(self.f.simp_double_neg)
+        elif isinstance(self, And):
+            return And(self.left.simp_double_neg, self.right.simp_double_neg)
+        elif isinstance(self, Or):
+            return Or(self.left.simp_double_neg, self.right.simp_double_neg)
+        if isinstance(self, Imp):
+            return Imp(self.left.simp_double_neg, self.right.simp_double_neg)
         else:
             raise ValueError("UNREACHABLE")
+
+    @cached_property
+    def subs_imp(self) -> Formula:
+        """
+        Función equivalente en la que se han sustituido las implicaciones
+        utilizando la equivalencia A→B sii ((¬A)∨B).
+        """
+        if isinstance(self, Var) or isinstance(self, Const):
+            return self
+        elif isinstance(self, Neg):
+            return Neg(self.f.subs_imp)
+        elif isinstance(self, And):
+            return And(self.left.subs_imp, self.right.subs_imp)
+        elif isinstance(self, Or):
+            return Or(self.left.subs_imp, self.right.subs_imp)
+        if isinstance(self, Imp):
+            return Or(Neg(self.left.subs_imp), self.right.subs_imp)
+        else:
+            raise ValueError("UNREACHABLE")
+
+    @cached_property
+    def push_neg(self) -> Formula:
+        """
+        Función equivalente en la que se han metido las negaciones todo lo
+        dentro posible, utilizando las fórmulas de De Morgan.
+        También se han eliminado las dobles negaciones.
+        """
+        if isinstance(self, Var) or isinstance(self, Const):
+            return self
+        elif isinstance(self, Neg):
+            if isinstance(self.f, Var) or isinstance(self.f, Const):
+                return Neg(self.f)
+            elif isinstance(self.f, Neg):
+                return self.f.f.push_neg
+            elif isinstance(self.f, And):
+                return Or(Neg(self.f.left).push_neg, Neg(self.f.right).push_neg)
+            elif isinstance(self.f, Or):
+                return And(Neg(self.f.left).push_neg, Neg(self.f.right).push_neg)
+        elif isinstance(self, And):
+            return And(self.left.push_neg, self.right.push_neg)
+        elif isinstance(self, Or):
+            return Or(self.left.push_neg, self.right.push_neg)
+        if isinstance(self, Imp):
+            return And(self.left.push_neg, Neg(self.right).push_neg)
+        else:
+            raise ValueError("UNREACHABLE")
+
+    @cached_property
+    def distribute_or_step(self) -> Formula:
+        """
+        Función equivalente aplicando recursivamente la propiedad distributiva
+        de la disyunción.
+
+        Como la recursión solo hace una pasada por el árbol de la función es
+        posible que queden términos pendientes de simplificar.
+        """
+        if isinstance(self, Var) or isinstance(self, Const):
+            return self
+        elif isinstance(self, Neg):
+            return self
+        elif isinstance(self, And):
+            return And(self.left.distribute_or_step, self.right.distribute_or_step)
+        elif isinstance(self, Or):
+            if isinstance(self.left, And):
+                # Propiedad distributiva de la disyunción en el primer parámetro
+                return And(
+                    Or(
+                        self.left.left.distribute_or_step, self.right.distribute_or_step
+                    ),
+                    Or(
+                        self.left.right.distribute_or_step,
+                        self.right.distribute_or_step,
+                    ),
+                )
+            elif isinstance(self.right, And):
+                # Propiedad distributiva de la disyunción en el segundo parámetro
+                return And(
+                    Or(
+                        self.left.distribute_or_step, self.right.left.distribute_or_step
+                    ),
+                    Or(
+                        self.left.distribute_or_step,
+                        self.right.right.distribute_or_step,
+                    ),
+                )
+            else:
+                return Or(self.left.distribute_or_step, self.right.distribute_or_step)
+        if isinstance(self, Imp):
+            return Imp(self.left.distribute_or_step, self.right.distribute_or_step)
+        else:
+            raise ValueError("UNREACHABLE")
+
+    @cached_property
+    def distribute_or(self) -> Formula:
+        """
+        Función equivalente en la que se ha aplicado todas las veces posible la
+        propiedad distributiva de la disyunción.
+        """
+        f1, f2 = self, self.distribute_or_step
+        while f2 != f1:
+            f1 = f2
+            f2 = f1.distribute_or_step
+        return f1
+
+    @cached_property
+    def CNF(self) -> Formula:
+        """
+        Forma Normal Conjuntiva.
+
+        Se calcula aplicando el siguiente algoritmo:
+        - Se eliminan las implicaciones utilizando subs_imp
+        - Aplicación de push_neg para empujar las negaciones hacia las raíces
+          del árbol de la fórmula
+        - Se aplica recursivamente la propiedad distributiva de la disyunción,
+          mediante distribute_or
+        """
+        return self.subs_imp.push_neg.distribute_or
+
+    @cached_property
+    def CNF_structured(self) -> list[set[Formula]]:
+        self = self.CNF
+        result: list[set[Formula]] = list()
+        current_set: set[Formula] = set()
+        i = 0
+        f_str = str(self)
+        while i < len(f_str):
+            if f_str[i] == "¬":
+                i += 1
+                if f_str[i] == "T":
+                    current_set.add(Const.FALSE)
+                elif f_str[i] == "F":
+                    current_set.add(Const.TRUE)
+                else:
+                    current_set.add(Neg(Var(f_str[i])))
+            elif f_str[i] == "∧":
+                result.append(current_set)
+                current_set = set()
+            elif f_str[i] == "∨" or f_str[i] == "(" or f_str[i] == ")":
+                pass
+            else:
+                if f_str[i] == "T":
+                    current_set.add(Const.TRUE)
+                elif f_str[i] == "F":
+                    current_set.add(Const.FALSE)
+                else:
+                    current_set.add(Var(f_str[i]))
+            i += 1
+        result.append(current_set)
+        return result
+
+    @cached_property
+    def is_tauto(self) -> bool:
+        """Determina si la fórmula es una tautología, utilizando la CNF."""
+        for l in self.CNF_structured:
+            affirmative, negative = set(), set()
+            for f in l:
+                if isinstance(f, Neg):
+                    negative.add(f.f)
+                else:
+                    affirmative.add(f)
+            if len(affirmative.intersection(negative)) == 0:
+                return False
+        return True
 
 
 class UnaryOperator(Formula):
@@ -217,29 +402,24 @@ class Table:
     def __init__(self, f: Formula, show_ass=True) -> None:
         self.f = f
         self.show_ass = show_ass
-        self._lines = None
-        self._vars = None
 
-    @property
+    @cached_property
     def vars(self):
-        if self._vars is None:
-            self._vars = list(self.f.vars)
-            self._vars.sort(key=lambda v: v.value)
-        return self._vars
+        result = list(self.f.vars)
+        result.sort(key=lambda v: v.value)
+        return result
 
-    @property
+    @cached_property
     def lines(self) -> list[TableLine]:
-        if self._lines is None:
-            n_vars = len(self.vars)
-            table: list[TableLine] = []
-            for i in range(2**n_vars):
-                ass_raw = format(i, f"0{n_vars}b")
-                ass = {v: bool(int(ass_raw[i])) for i, v in enumerate(self.vars)}
-                table.append(TableLine(self.f, ass, self.show_ass))
-            return table
-        return self._lines
+        n_vars = len(self.vars)
+        table: list[TableLine] = []
+        for i in range(2**n_vars):
+            ass_raw = format(i, f"0{n_vars}b")
+            ass = {v: bool(int(ass_raw[i])) for i, v in enumerate(self.vars)}
+            table.append(TableLine(self.f, ass, self.show_ass))
+        return table
 
-    @property
+    @cached_property
     def truth_list(self) -> list[bool]:
         return [line.repr for line in self.lines]
 
@@ -260,170 +440,5 @@ def is_tauto(f: Formula):
     return all(Table(f).truth_list)
 
 
-def subs_imp(f: Formula) -> Formula:
-    """
-    Reemplaza todas las apariciones de la implicación en una fórmula mediante la
-    equivalencia A→B sii ((¬A)∨B)
-    """
-    if isinstance(f, Var) or isinstance(f, Const):
-        return f
-    elif isinstance(f, Neg):
-        return Neg(subs_imp(f.f))
-    elif isinstance(f, And):
-        return And(subs_imp(f.left), subs_imp(f.right))
-    elif isinstance(f, Or):
-        return Or(subs_imp(f.left), subs_imp(f.right))
-    if isinstance(f, Imp):
-        return Or(Neg(subs_imp(f.left)), subs_imp(f.right))
-    else:
-        raise ValueError("UNREACHABLE")
-
-
-def simp_double_neg(f: Formula) -> Formula:
-    """
-    Simplifica las dobles negaciones en una fórmula
-    """
-    if isinstance(f, Var) or isinstance(f, Const):
-        return f
-    elif isinstance(f, Neg):
-        if isinstance(f.f, Neg):
-            return simp_double_neg(f.f.f)
-        else:
-            return Neg(simp_double_neg(f.f))
-    elif isinstance(f, And):
-        return And(simp_double_neg(f.left), simp_double_neg(f.right))
-    elif isinstance(f, Or):
-        return Or(simp_double_neg(f.left), simp_double_neg(f.right))
-    if isinstance(f, Imp):
-        return Imp(simp_double_neg(f.left), simp_double_neg(f.right))
-    else:
-        raise ValueError("UNREACHABLE")
-
-
-def push_neg(f: Formula) -> Formula:
-    """
-    Mete las negaciones todo lo dentro posible de una fórmula y simplifica las
-    dobles negaciones.
-    """
-    if isinstance(f, Var) or isinstance(f, Const):
-        return f
-    elif isinstance(f, Neg):
-        if isinstance(f.f, Var) or isinstance(f.f, Const):
-            return Neg(f.f)
-        elif isinstance(f.f, Neg):
-            return push_neg(f.f.f)
-        elif isinstance(f.f, And):
-            return Or(push_neg(Neg(f.f.left)), push_neg(Neg(f.f.right)))
-        elif isinstance(f.f, Or):
-            return And(push_neg(Neg(f.f.left)), push_neg(Neg(f.f.right)))
-    elif isinstance(f, And):
-        return And(push_neg(f.left), push_neg(f.right))
-    elif isinstance(f, Or):
-        return Or(push_neg(f.left), push_neg(f.right))
-    if isinstance(f, Imp):
-        raise ValueError("No debería haber implicaciones")
-    else:
-        raise ValueError("UNREACHABLE")
-
-
-def distribute_or_step(f: Formula) -> Formula:
-    """
-    Paso en la conversión a CNF, utilizando la propiedad distributiva de la
-    disyunción.
-    """
-    if isinstance(f, Var) or isinstance(f, Const):
-        return f
-    elif isinstance(f, Neg):
-        return f
-    elif isinstance(f, And):
-        return And(distribute_or_step(f.left), distribute_or_step(f.right))
-    elif isinstance(f, Or):
-        if isinstance(f.left, And):
-            # Distributiva de la disyunción en el primer parámetro
-            return And(
-                Or(distribute_or_step(f.left.left), distribute_or_step(f.right)),
-                Or(distribute_or_step(f.left.right), distribute_or_step(f.right)),
-            )
-        elif isinstance(f.right, And):
-            # Distributiva de la disyunción en el segundo parámetro
-            return And(
-                Or(distribute_or_step(f.left), distribute_or_step(f.right.left)),
-                Or(distribute_or_step(f.left), distribute_or_step(f.right.right)),
-            )
-        else:
-            return Or(distribute_or_step(f.left), distribute_or_step(f.right))
-    if isinstance(f, Imp):
-        raise ValueError("No debería haber implicaciones")
-    else:
-        raise ValueError("UNREACHABLE")
-
-
-def distribute_or(f: Formula) -> Formula:
-    """
-    Aplicación sucesiva de distribute_or_step hasta que se deja de modificar la
-    fórmula.
-    """
-    fnext = distribute_or_step(f)
-    while fnext != f:
-        f = fnext
-        fnext = distribute_or_step(f)
-    return f
-
-
-def CNF(f: Formula) -> Formula:
-    """
-    Devuelve la Forma Normal Conjuntiva de una fórmula.
-    """
-    return distribute_or(push_neg(subs_imp(f)))
-
-
-def CNF_list_of_sets(f: Formula) -> list[set[Formula]]:
-    f = CNF(f)
-    result: list[set[Formula]] = list()
-    current_set: set[Formula] = set()
-    i = 0
-    f_str = str(f)
-    while i < len(f_str):
-        if f_str[i] == "¬":
-            i += 1
-            if f_str[i] == "T":
-                current_set.add(Const.FALSE)
-            elif f_str[i] == "F":
-                current_set.add(Const.TRUE)
-            else:
-                current_set.add(Neg(Var(f_str[i])))
-        elif f_str[i] == "∧":
-            result.append(current_set)
-            current_set = set()
-        elif f_str[i] == "∨" or f_str[i] == "(" or f_str[i] == ")":
-            pass
-        else:
-            if f_str[i] == "T":
-                current_set.add(Const.TRUE)
-            elif f_str[i] == "F":
-                current_set.add(Const.FALSE)
-            else:
-                current_set.add(Var(f_str[i]))
-        i += 1
-    result.append(current_set)
-    return result
-
-
-def pretty_print_CNF_list_of_sets(cnf: list[set[Formula]]) -> str:
+def print_CNF_structured(cnf: list[set[Formula]]) -> str:
     return "∧".join([f"({'∨'.join([ str(e) for e in list(disj)])})" for disj in cnf])
-
-
-def detect_tauto_inner(formulas: set[Formula]) -> bool:
-    affirmative = set()
-    negative = set()
-    for f in formulas:
-        if isinstance(f, Neg):
-            negative.add(f.f)
-        else:
-            affirmative.add(f)
-    return len(affirmative.intersection(negative)) > 0
-
-
-def detect_tauto(f: Formula) -> bool:
-    cnf = CNF_list_of_sets(f)
-    return all(map(detect_tauto_inner, cnf))
