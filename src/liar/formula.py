@@ -3,13 +3,71 @@ from enum import Enum
 from functools import cached_property
 from random import choice, sample
 
+import graphviz
+
 
 class Formula:
     def __str__(self):
         return repr(self)
 
-    def str_polish(self):
+    @property
+    def str_polish(self) -> str:
         raise NotImplementedError()
+
+    # @staticmethod
+    # def parse_polish_rec(string: str) -> tuple[Formula, list[Formula]]:
+    #     if " " in string:
+    #         token, tokens = string.split(" ", 1)
+    #         if token == "Neg":
+    #             f, stack = Formula.parse_polish_rec(tokens)
+    #             return (Neg(f), stack)
+    #         elif token == "And":
+    #             f1, stack = Formula.parse_polish_rec(tokens)
+    #             f2 = stack.pop()
+    #             return (And(f1, f2), stack)
+    #         elif token == "Or":
+    #             f1, stack = Formula.parse_polish_rec(tokens)
+    #             f2 = stack.pop()
+    #             return (Or(f1, f2), stack)
+    #         elif token == "Imp":
+    #             f1, stack = Formula.parse_polish_rec(tokens)
+    #             f2 = stack.pop()
+    #             return (Imp(f1, f2), stack)
+    #         elif token == "T" or token == "F":
+    #             f = Const.TRUE if token == "T" else Const.FALSE
+    #             f1, stack = Formula.parse_polish_rec(tokens)
+    #             return (f, [f1]+stack)
+    #         else:
+    #             f = Var(token)
+    #             f1, stack = Formula.parse_polish_rec(tokens)
+    #             return (f, [f1]+stack)
+    #     else:
+    #         return (None, [])
+
+    @staticmethod
+    def parse_polish(string: str) -> Formula | None:
+        ...
+
+    def graph(self, prefix:str = "", parent_name: str ="", dot: graphviz.Graph | None = None) -> graphviz.Graph:
+        if dot is None:
+            dot = graphviz.Graph()
+        if isinstance(self, Var) or isinstance(self, Const):
+            name = f"{prefix}{self}"
+            dot.node(name, f"{self}")
+        elif isinstance(self, UnaryOperator):
+            name = f"{prefix}self.symbol" 
+            dot.node(name, self.symbol)
+            self.f.graph(self.symbol, name, dot)
+        elif isinstance(self, BinaryOperator):
+            name = f"{prefix}self.symbol" 
+            dot.node(name,self.symbol)
+            self.left.graph(self.symbol+"l", name, dot)
+            self.right.graph(self.symbol+"r",name,  dot)
+        else:
+            raise ValueError("UNREACHABLE")
+        if parent_name:
+           dot.edge(parent_name, name)
+        return dot
 
     def __eq__(self, other):
         return str(self) == str(other)
@@ -287,6 +345,10 @@ class UnaryOperator(Formula):
     def __repr__(self):
         return f"{self.symbol}{self.f}"
 
+    @property
+    def str_polish(self) -> str:
+        return f"{self.symbol}{self.f.str_polish}"
+
     def semantics(self, value: bool) -> bool:
         raise NotImplementedError()
 
@@ -300,6 +362,10 @@ class BinaryOperator(Formula):
     def __repr__(self):
         return f"({self.left}{self.symbol}{self.right})"
 
+    @property
+    def str_polish(self) -> str:
+        return f"{self.symbol}{self.left.str_polish}{self.right.str_polish}"
+
     def semantics(self, left_value: bool, right_value: bool) -> bool:
         raise NotImplementedError()
 
@@ -307,16 +373,16 @@ class BinaryOperator(Formula):
 class Var(Formula):
     var_names = "ABCDEGHIJKLMNOPQRSVWXYZ"
 
-    def __init__(self, value: str):
-        assert value.isupper(), "Las variables se representan con mayúsculas"
-        assert len(value) == 1, "Las variables tienen que tener longitud uno"
-        assert (
-            value != "T" and value != "F"
-        ), "Las variables no pueden ser T ni F puesto que son constantes"
-        self.value = value
+    def __init__(self, name: str):
+        assert name in Var.var_names, "Nombre de variable inválido"
+        self.value = name
 
     def __repr__(self):
         return self.value
+
+    @property
+    def str_polish(self):
+        return str(self)
 
     @staticmethod
     def generate(n: int, random: bool = False) -> set[Var]:
@@ -338,6 +404,10 @@ class Const(Formula, Enum):
 
     def __repr__(self):
         return "F" if self.name == "FALSE" else "T"
+
+    @property
+    def str_polish(self):
+        return str(self)
 
 
 class Neg(UnaryOperator):
