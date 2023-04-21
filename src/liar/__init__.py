@@ -60,9 +60,9 @@ class Formula:
         if isinstance(self, Var) or isinstance(self, Const):
             return 1
         elif isinstance(self, UnaryOperator):
-            return 1 + length(self.f)
+            return 1 + len(self.f)
         elif isinstance(self, BinaryOperator):
-            return 1 + length(self.left) + length(self.right)
+            return 1 + len(self.left) + len(self.right)
         else:
             raise ValueError("UNREACHABLE")
 
@@ -147,32 +147,6 @@ class Imp(BinaryOperator):
 
 binary_operators = [And, Or, Imp]
 
-
-
-def constants(f: Formula) -> set[Const]:
-    if isinstance(f, Var):
-        return set()
-    elif isinstance(f, Const):
-        return {f}
-    elif isinstance(f, UnaryOperator):
-        return constants(f.f)
-    elif isinstance(f, BinaryOperator):
-        return constants(f.left).union(constants(f.right))
-    else:
-        raise ValueError("UNREACHABLE")
-
-
-def length(f: Formula) -> int:
-    if isinstance(f, Var) or isinstance(f, Const):
-        return 1
-    elif isinstance(f, UnaryOperator):
-        return 1 + length(f.f)
-    elif isinstance(f, BinaryOperator):
-        return 1 + length(f.left) + length(f.right)
-    else:
-        raise ValueError("UNREACHABLE")
-
-
 Assign = dict[Var, bool]
 
 
@@ -221,7 +195,7 @@ class TableLine:
 
     @staticmethod
     def table_line_rec(f: Formula, ass: Assign) -> Tuple[list[bool], int]:
-        assert variables(f).issubset(set(ass.keys())), "La asignación no es correcta"
+        assert f.vars.issubset(set(ass.keys())), "La asignación no es correcta"
         if isinstance(f, Var):
             return ([ass[f]], 0)
         elif isinstance(f, Const):
@@ -249,7 +223,7 @@ class Table:
     @property
     def vars(self):
         if self._vars is None:
-            self._vars = list(variables(self.f))
+            self._vars = list(self.f.vars)
             self._vars.sort(key=lambda v: v.value)
         return self._vars
 
