@@ -1,6 +1,5 @@
-from typing import Tuple, Union
+from typing import Tuple
 from enum import Enum
-
 
 
 class Formula:
@@ -17,7 +16,7 @@ class Formula:
         return hash(repr(self))
 
 
-class UnaryOperator:
+class UnaryOperator(Formula):
     symbol: str
 
     def __init__(self, f: Formula) -> None:
@@ -30,7 +29,7 @@ class UnaryOperator:
         raise NotImplementedError()
 
 
-class BinaryOperator:
+class BinaryOperator(Formula):
     symbol: str
 
     def __init__(self, left: Formula, right: Formula):
@@ -64,7 +63,7 @@ class Const(Formula, Enum):
         return "F" if self.name == "FALSE" else "T"
 
 
-class Neg(Formula, UnaryOperator):
+class Neg(UnaryOperator):
     symbol = "¬"
 
     def semantics(self, value: bool) -> bool:
@@ -74,21 +73,21 @@ class Neg(Formula, UnaryOperator):
 unary_operators = [Neg]
 
 
-class And(Formula, BinaryOperator):
+class And(BinaryOperator):
     symbol = "∧"
 
     def semantics(self, left_value: bool, right_value: bool) -> bool:
         return left_value and right_value
 
 
-class Or(Formula, BinaryOperator):
+class Or(BinaryOperator):
     symbol = "∨"
 
     def semantics(self, left_value: bool, right_value: bool) -> bool:
         return left_value or right_value
 
 
-class Imp(Formula, BinaryOperator):
+class Imp(BinaryOperator):
     symbol = "→"
 
     def semantics(self, left_value: bool, right_value: bool) -> bool:
