@@ -13,10 +13,10 @@ def main():
     f = (B & ~((A >> V) >> (A & B))) >> Const.FALSE
 
     print(f)
-    print(f.str_polish)
-    print(Table(f))
-    print(Formula.print_CNF_structured(f.CNF_structured))
-    graph = f.graph()
+    # print(f.str_polish)
+    # print(Table(f))
+    # print(Formula.print_CNF_structured(f.CNF_structured))
+    graph = f.graph_rec()
     graph.render('./tmp-graph.gv', view=True)
     # print(pretty_print_CNF_list_of_sets(CNF_list_of_sets(f)))
     # print(detect_tauto(f))
@@ -33,14 +33,27 @@ def main2():
         print(f"{f.str_polish = }")
         # print(f"{Formula.parse_polish_rec(f.str_polish) = }")
         # assert is_tauto(f) == f.is_tauto, f"{f}"
-        graph = f.graph()
+        graph = f.graph_rec()
         graph.render('./tmp-graph.gv', view=True)
         input("\n")
 
 if __name__ == "__main__":
-    main()
+    # main()
     # fCNF = CNF(f)
     # print(CNF(f))
     # table_CNF = Table(fCNF)
     # print(table_CNF)
     # main()
+
+    A = Var("A")
+    B = Var("B")
+    C = Var("C")
+    V = Var("V")
+    # f = A & ~(B >> (A >> Const.TRUE))
+    # f = (B | ~((A | V) | (A | B))) | C
+    f = (B & ~((A >> V) >> (A & B))) >> Const.FALSE
+    # f = ~A 
+    print(f)
+    f.render_graph()
+    print(f.graph)
+    # .render('./tmp-graph.gv', view=True)

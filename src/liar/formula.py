@@ -4,6 +4,7 @@ from functools import cached_property
 from random import choice, sample
 
 import graphviz
+from graphviz.backend.rendering import pathlib
 
 
 class Formula:
@@ -48,26 +49,73 @@ class Formula:
     def parse_polish(string: str) -> Formula | None:
         ...
 
-    def graph(self, prefix:str = "", parent_name: str ="", dot: graphviz.Graph | None = None) -> graphviz.Graph:
-        if dot is None:
-            dot = graphviz.Graph()
+    # def graph(self, parent_name: str ="", dot: graphviz.Graph | None = None) -> graphviz.Graph:
+    #     if dot is None:
+    #         dot = graphviz.Graph()
+    #     else:
+    #         print(dot.source)
+    #     if isinstance(self, Var) or isinstance(self, Const):
+    #         name = f"{parent_name}{self}"
+    #         dot.node(name, f"{self}")
+    #     elif isinstance(self, UnaryOperator):
+    #         name = f"{parent_name}{self.__class__.__name__}" 
+    #         dot.node(name, self.symbol)
+    #         self.f.graph(name, dot)
+    #     elif isinstance(self, BinaryOperator):
+    #         name = f"{parent_name}{self.__class__.__name__}" 
+    #         dot.node(name, self.symbol)
+    #         self.left.graph(name+"l", dot)
+    #         self.right.graph(name+"r",  dot)
+    #     else:
+    #         raise ValueError("UNREACHABLE")
+    #     if parent_name:
+    #        dot.edge(parent_name, name)
+    #     return dot
+
+    def graph_rec(self, prefix="") -> list[str]:
         if isinstance(self, Var) or isinstance(self, Const):
-            name = f"{prefix}{self}"
-            dot.node(name, f"{self}")
+            return [f"{prefix}{self} [label={self}]"]
         elif isinstance(self, UnaryOperator):
-            name = f"{prefix}self.symbol" 
-            dot.node(name, self.symbol)
-            self.f.graph(self.symbol, name, dot)
+            prefix = f"{prefix}{self.__class__.__name__}"
+            if isinstance(self.f, Var) or isinstance(self.f, Const):
+                future_name = f"{prefix}{self.f}"
+            elif isinstance(self.f, UnaryOperator) or isinstance(self.f, UnaryOperator):
+                future_name = f"{prefix}{self.__class__.__name__}"
+            else:
+                raise ValueError("UNREACHABLE")
+            return [f"{prefix} -- {future_name}",f"{prefix} [label={self.symbol}]"] + self.f.graph_rec(prefix)
         elif isinstance(self, BinaryOperator):
-            name = f"{prefix}self.symbol" 
-            dot.node(name,self.symbol)
-            self.left.graph(self.symbol+"l", name, dot)
-            self.right.graph(self.symbol+"r",name,  dot)
+            prefix = f"{prefix}{self.__class__.__name__}"
+            result = [f"{prefix} [label={self.symbol}]"]
+            if isinstance(self.left, Var) or isinstance(self.left, Const):
+                future_name_left = f"{prefix}L{self.left}"
+            elif isinstance(self.left, UnaryOperator) or isinstance(self.left, BinaryOperator):
+                future_name_left = f"{prefix}L{self.__class__.__name__}"
+            else:
+                raise ValueError("UNREACHABLE")
+            result.append(f"{prefix} -- {future_name_left}")
+            result += self.left.graph_rec(prefix+"L")
+
+            if isinstance(self.right, Var) or isinstance(self.right, Const):
+                future_name_right = f"{prefix}L{self.right}"
+            elif isinstance(self.right, UnaryOperator) or isinstance(self.right, BinaryOperator):
+                future_name_right = f"{prefix}L{self.__class__.__name__}"
+            else:
+                raise ValueError("UNREACHABLE")
+            result.append(f"{prefix} -- {future_name_right}")
+            result += self.right.graph_rec(prefix+"L")
+            return result
         else:
             raise ValueError("UNREACHABLE")
-        if parent_name:
-           dot.edge(parent_name, name)
-        return dot
+
+    @cached_property
+    def graph(self):
+        return "graph {\n  "+"\n  ".join(self.graph_rec())+"\n}"
+
+    def render_graph(self, path="./graph.gv", view=True):
+        filepath = pathlib.Path(path)
+        filepath.write_text(self.graph, encoding='utf8')
+        graphviz.render('dot', 'png', filepath).replace('\\', '/')
 
     def __eq__(self, other):
         return str(self) == str(other)
@@ -203,14 +251,12 @@ class Formula:
                 return Or(Neg(self.f.left).push_neg, Neg(self.f.right).push_neg)
             elif isinstance(self.f, Or):
                 return And(Neg(self.f.left).push_neg, Neg(self.f.right).push_neg)
-        elif isinstance(self, And):
-            return And(self.left.push_neg, self.right.push_neg)
-        elif isinstance(self, Or):
-            return Or(self.left.push_neg, self.right.push_neg)
-        if isinstance(self, Imp):
-            return And(self.left.push_neg, Neg(self.right).push_neg)
+            elif isinstance(self.f, Imp):
+                return And(self.f.left.push_neg, Neg(self.f.right).push_neg)
+        elif isinstance(self, BinaryOperator):
+            return self.__class__(self.left.push_neg, self.right.push_neg)
         else:
-            raise ValueError("UNREACHABLE")
+            raise ValueError(f"UNREACHABLE")
 
     @cached_property
     def distribute_or_step(self) -> Formula:
@@ -347,7 +393,7 @@ class UnaryOperator(Formula):
 
     @property
     def str_polish(self) -> str:
-        return f"{self.symbol}{self.f.str_polish}"
+        return f"{self.symbol} {self.f.str_polish}"
 
     def semantics(self, value: bool) -> bool:
         raise NotImplementedError()
@@ -364,7 +410,7 @@ class BinaryOperator(Formula):
 
     @property
     def str_polish(self) -> str:
-        return f"{self.symbol}{self.left.str_polish}{self.right.str_polish}"
+        return f"{self.symbol} {self.left.str_polish} {self.right.str_polish}"
 
     def semantics(self, left_value: bool, right_value: bool) -> bool:
         raise NotImplementedError()
