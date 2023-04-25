@@ -1,12 +1,23 @@
 import pytest
-from liar.formula import And, BinaryOperator, Const, Formula, Imp, Neg, Or, UnaryOperator, Var
+from liar.formula import (
+    And,
+    BinaryOperator,
+    Const,
+    Formula,
+    Imp,
+    Neg,
+    Or,
+    UnaryOperator,
+    Var,
+)
 from liar.table import is_tauto
+
 
 @pytest.fixture(scope="function")
 def random_formula() -> Formula:
     return Formula.random(10, 100)
 
-    
+
 def test_var_str():
     vars = Var.generate(10, random=True)
     for v in vars:
@@ -26,11 +37,14 @@ def test_simp_double_neg(random_formula: Formula):
         case _:
             pass
 
+
 def test_push_neg(random_formula: Formula):
     f = random_formula.push_neg
     match f:
         case Neg(f):
-            assert isinstance(f, Var) or isinstance(f, Const), f"{f} no es de tipo Var ni Const"
+            assert isinstance(f, Var) or isinstance(
+                f, Const
+            ), f"{f} no es de tipo Var ni Const"
         case UnaryOperator(A):
             test_push_neg(A)
         case BinaryOperator(A, B):
@@ -38,6 +52,7 @@ def test_push_neg(random_formula: Formula):
             test_push_neg(B)
         case _:
             pass
+
 
 def test_subs_imp(random_formula: Formula):
     f = random_formula.subs_imp
@@ -52,12 +67,13 @@ def test_subs_imp(random_formula: Formula):
         case _:
             pass
 
+
 def test_distribute_or(random_formula: Formula):
     f = random_formula.distribute_or
     match f:
-        case Or(And(_,_), _):
+        case Or(And(_, _), _):
             pytest.fail(f"{f} contiene un And dentro de un Or")
-        case Or(_, And(_,_)):
+        case Or(_, And(_, _)):
             pytest.fail(f"{f} contiene un And dentro de un Or")
         case UnaryOperator(A):
             test_distribute_or(A)
@@ -67,6 +83,16 @@ def test_distribute_or(random_formula: Formula):
         case _:
             pass
 
-def test_is_tauto_congjuent(random_formula: Formula):
-    assert random_formula.is_tauto == is_tauto(random_formula) 
 
+def test_is_tauto_congjuent(random_formula: Formula):
+    assert random_formula.is_tauto == is_tauto(random_formula)
+
+
+def test_subs_examples():
+    A = Var('A')
+    B = Var('B')
+    C = Var('C')
+    D = Var('D')
+
+    assert (A & B).subs({A: A & B}) == (A & B)&B
+    assert (~B).subs({A: A & B}) == ~B

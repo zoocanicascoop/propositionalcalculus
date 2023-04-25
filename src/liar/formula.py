@@ -58,11 +58,11 @@ class Formula:
     #         name = f"{parent_name}{self}"
     #         dot.node(name, f"{self}")
     #     elif isinstance(self, UnaryOperator):
-    #         name = f"{parent_name}{self.__class__.__name__}" 
+    #         name = f"{parent_name}{self.__class__.__name__}"
     #         dot.node(name, self.symbol)
     #         self.f.graph(name, dot)
     #     elif isinstance(self, BinaryOperator):
-    #         name = f"{parent_name}{self.__class__.__name__}" 
+    #         name = f"{parent_name}{self.__class__.__name__}"
     #         dot.node(name, self.symbol)
     #         self.left.graph(name+"l", dot)
     #         self.right.graph(name+"r",  dot)
@@ -74,15 +74,15 @@ class Formula:
 
     @cached_property
     def graph(self):
-        return "graph {\n  "+"\n  ".join(self._graph_rec())+"\n}"
+        return "graph {\n  " + "\n  ".join(self._graph_rec()) + "\n}"
 
     def render_graph(self, path="./graph.gv", view=True):
         filepath = pathlib.Path(path)
-        filepath.write_text(self.graph, encoding='utf8')
-        graphviz.render('dot', 'pdf', filepath).replace('\\', '/')
+        filepath.write_text(self.graph, encoding="utf8")
+        graphviz.render("dot", "pdf", filepath).replace("\\", "/")
 
     def _graph_rec(self, prefix="") -> list[str]:
-        def name(f:Formula) -> str:
+        def name(f: Formula) -> str:
             match f:
                 case Var() | Const():
                     return str(f)
@@ -90,26 +90,32 @@ class Formula:
                     return f.__class__.__name__
                 case _:
                     raise ValueError(f"UNREACHABLE")
-        
+
         match self:
             case Var() | Const():
                 return [f"{prefix}{self} [label={self}]"]
             case UnaryOperator(f):
                 prefix = f"{prefix}{name(self)}"
                 future_name = f"{prefix}{name(f)}"
-                return [f"{prefix} -- {future_name}",f"{prefix} [label={self.symbol}]"] + self.f._graph_rec(prefix)
+                return [
+                    f"{prefix} -- {future_name}",
+                    f"{prefix} [label={self.symbol}]",
+                ] + self.f._graph_rec(prefix)
             case BinaryOperator(A, B):
                 prefix = f"{prefix}{name(self)}"
                 future_name_A = f"{prefix}L{name(A)}"
                 future_name_B = f"{prefix}R{name(B)}"
-                return [f"{prefix} [label={self.symbol}]", 
+                return (
+                    [
+                        f"{prefix} [label={self.symbol}]",
                         f"{prefix} -- {future_name_A}",
                         f"{prefix} -- {future_name_B}",
-                        ] + A._graph_rec(prefix+"L") + B._graph_rec(prefix+"R")
+                    ]
+                    + A._graph_rec(prefix + "L")
+                    + B._graph_rec(prefix + "R")
+                )
             case _:
                 raise ValueError(f"UNREACHABLE")
-
-
 
     def __eq__(self, other):
         return str(self) == str(other)
@@ -139,7 +145,6 @@ class Formula:
                 return 1 + len(self.left) + len(self.right)
             case _:
                 raise ValueError("UNREACHABLE")
-
 
     @staticmethod
     def random(n_vars: int, n_iters: int) -> Formula:
@@ -192,6 +197,20 @@ class Formula:
             case _:
                 raise ValueError("UNREACHABLE")
 
+    def subs(self, rules: dict[Var, Formula]) -> Formula:
+        # assert set(rules.keys()).issubset(self.vars)
+        match self:
+            case Var():
+                return rules[self] if self in rules else self
+            case Const():
+                return self
+            case UnaryOperator(A):
+                return self.__class__(A.subs(rules))
+            case BinaryOperator(A ,B):
+                return self.__class__(A.subs(rules), B.subs(rules))
+            case _:
+                raise ValueError("UNREACHABLE")
+
     @cached_property
     def simp_double_neg(self) -> Formula:
         """
@@ -227,7 +246,6 @@ class Formula:
             case _:
                 raise ValueError("UNREACHABLE")
 
-
     @cached_property
     def push_neg(self) -> Formula:
         """
@@ -238,7 +256,7 @@ class Formula:
         match self:
             case Var() | Const():
                 return self
-            case Neg(Var()) | Neg(Const()) :
+            case Neg(Var()) | Neg(Const()):
                 return Neg(self.f)
             case Neg(Neg(f)):
                 return f.push_neg
@@ -268,9 +286,15 @@ class Formula:
             case UnaryOperator(f):
                 return self.__class__(f.distribute_or_step)
             case Or(And(A, B), C):
-                return And(Or(A.distribute_or_step, C.distribute_or_step), Or(B.distribute_or_step, C.distribute_or_step))
+                return And(
+                    Or(A.distribute_or_step, C.distribute_or_step),
+                    Or(B.distribute_or_step, C.distribute_or_step),
+                )
             case Or(A, And(B, C)):
-                return And(Or(A.distribute_or_step,B.distribute_or_step), Or(A.distribute_or_step,C.distribute_or_step))
+                return And(
+                    Or(A.distribute_or_step, B.distribute_or_step),
+                    Or(A.distribute_or_step, C.distribute_or_step),
+                )
             case BinaryOperator(left, right):
                 return self.__class__(left.distribute_or_step, right.distribute_or_step)
             case _:
