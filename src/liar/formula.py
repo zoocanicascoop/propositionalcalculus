@@ -72,50 +72,44 @@ class Formula:
     #        dot.edge(parent_name, name)
     #     return dot
 
-    def graph_rec(self, prefix="") -> list[str]:
-        if isinstance(self, Var) or isinstance(self, Const):
-            return [f"{prefix}{self} [label={self}]"]
-        elif isinstance(self, UnaryOperator):
-            prefix = f"{prefix}{self.__class__.__name__}"
-            if isinstance(self.f, Var) or isinstance(self.f, Const):
-                future_name = f"{prefix}{self.f}"
-            elif isinstance(self.f, UnaryOperator) or isinstance(self.f, UnaryOperator):
-                future_name = f"{prefix}{self.__class__.__name__}"
-            else:
-                raise ValueError("UNREACHABLE")
-            return [f"{prefix} -- {future_name}",f"{prefix} [label={self.symbol}]"] + self.f.graph_rec(prefix)
-        elif isinstance(self, BinaryOperator):
-            prefix = f"{prefix}{self.__class__.__name__}"
-            result = [f"{prefix} [label={self.symbol}]"]
-            if isinstance(self.left, Var) or isinstance(self.left, Const):
-                future_name_left = f"{prefix}L{self.left}"
-            elif isinstance(self.left, UnaryOperator) or isinstance(self.left, BinaryOperator):
-                future_name_left = f"{prefix}L{self.__class__.__name__}"
-            else:
-                raise ValueError("UNREACHABLE")
-            result.append(f"{prefix} -- {future_name_left}")
-            result += self.left.graph_rec(prefix+"L")
-
-            if isinstance(self.right, Var) or isinstance(self.right, Const):
-                future_name_right = f"{prefix}L{self.right}"
-            elif isinstance(self.right, UnaryOperator) or isinstance(self.right, BinaryOperator):
-                future_name_right = f"{prefix}L{self.__class__.__name__}"
-            else:
-                raise ValueError("UNREACHABLE")
-            result.append(f"{prefix} -- {future_name_right}")
-            result += self.right.graph_rec(prefix+"L")
-            return result
-        else:
-            raise ValueError("UNREACHABLE")
-
     @cached_property
     def graph(self):
-        return "graph {\n  "+"\n  ".join(self.graph_rec())+"\n}"
+        return "graph {\n  "+"\n  ".join(self._graph_rec())+"\n}"
 
     def render_graph(self, path="./graph.gv", view=True):
         filepath = pathlib.Path(path)
         filepath.write_text(self.graph, encoding='utf8')
-        graphviz.render('dot', 'png', filepath).replace('\\', '/')
+        graphviz.render('dot', 'pdf', filepath).replace('\\', '/')
+
+    def _graph_rec(self, prefix="") -> list[str]:
+        def name(f:Formula) -> str:
+            match f:
+                case Var() | Const():
+                    return str(f)
+                case UnaryOperator() | BinaryOperator():
+                    return f.__class__.__name__
+                case _:
+                    raise ValueError(f"UNREACHABLE")
+        
+        match self:
+            case Var() | Const():
+                return [f"{prefix}{self} [label={self}]"]
+            case UnaryOperator(f):
+                prefix = f"{prefix}{name(self)}"
+                future_name = f"{prefix}{name(f)}"
+                return [f"{prefix} -- {future_name}",f"{prefix} [label={self.symbol}]"] + self.f._graph_rec(prefix)
+            case BinaryOperator(A, B):
+                prefix = f"{prefix}{name(self)}"
+                future_name_A = f"{prefix}L{name(A)}"
+                future_name_B = f"{prefix}R{name(B)}"
+                return [f"{prefix} [label={self.symbol}]", 
+                        f"{prefix} -- {future_name_A}",
+                        f"{prefix} -- {future_name_B}",
+                        ] + A._graph_rec(prefix+"L") + B._graph_rec(prefix+"R")
+            case _:
+                raise ValueError(f"UNREACHABLE")
+
+
 
     def __eq__(self, other):
         return str(self) == str(other)
@@ -136,17 +130,20 @@ class Formula:
         return hash(repr(self))
 
     def __len__(self) -> int:
-        if isinstance(self, Var) or isinstance(self, Const):
-            return 1
-        elif isinstance(self, UnaryOperator):
-            return 1 + len(self.f)
-        elif isinstance(self, BinaryOperator):
-            return 1 + len(self.left) + len(self.right)
-        else:
-            raise ValueError("UNREACHABLE")
+        match self:
+            case Var() | Const():
+                return 1
+            case UnaryOperator():
+                return 1 + len(self.f)
+            case BinaryOperator():
+                return 1 + len(self.left) + len(self.right)
+            case _:
+                raise ValueError("UNREACHABLE")
+
 
     @staticmethod
     def random(n_vars: int, n_iters: int) -> Formula:
+        """Generador de funciones aleatorias."""
         formulas: set[Var | Neg | And | Or | Imp] = Var.generate(n_vars)
         current_formula = None
         assert n_iters > 0, "El número de iteraciones debe ser positivo"
@@ -168,51 +165,49 @@ class Formula:
     @cached_property
     def vars(self) -> set["Var"]:
         """Conjunto de variables presentes en la fórmula."""
-        if isinstance(self, Var):
-            return {self}
-        elif isinstance(self, Const):
-            return set()
-        elif isinstance(self, UnaryOperator):
-            return self.f.vars
-        elif isinstance(self, BinaryOperator):
-            return self.left.vars.union(self.right.vars)
-        else:
-            raise ValueError("UNREACHABLE")
+        match self:
+            case Var():
+                return {self}
+            case Const():
+                return set()
+            case UnaryOperator():
+                return self.f.vars
+            case BinaryOperator():
+                return self.left.vars.union(self.right.vars)
+            case _:
+                raise ValueError("UNREACHABLE")
 
     @cached_property
     def consts(self) -> set["Const"]:
         """Conjunto de constantes presentes en la fórmula."""
-        if isinstance(self, Var):
-            return set()
-        elif isinstance(self, Const):
-            return {self}
-        elif isinstance(self, UnaryOperator):
-            return self.f.consts
-        elif isinstance(self, BinaryOperator):
-            return self.left.consts.union(self.right.consts)
-        else:
-            raise ValueError("UNREACHABLE")
+        match self:
+            case Var():
+                return set()
+            case Const():
+                return {self}
+            case UnaryOperator():
+                return self.f.consts
+            case BinaryOperator():
+                return self.left.consts.union(self.right.consts)
+            case _:
+                raise ValueError("UNREACHABLE")
 
     @cached_property
     def simp_double_neg(self) -> Formula:
         """
         Función equivalente en la que se han elmiminado las dobles negaciones.
         """
-        if isinstance(self, Var) or isinstance(self, Const):
-            return self
-        elif isinstance(self, Neg):
-            if isinstance(self.f, Neg):
-                return self.f.f.simp_double_neg
-            else:
-                return Neg(self.f.simp_double_neg)
-        elif isinstance(self, And):
-            return And(self.left.simp_double_neg, self.right.simp_double_neg)
-        elif isinstance(self, Or):
-            return Or(self.left.simp_double_neg, self.right.simp_double_neg)
-        if isinstance(self, Imp):
-            return Imp(self.left.simp_double_neg, self.right.simp_double_neg)
-        else:
-            raise ValueError("UNREACHABLE")
+        match self:
+            case Var() | Const():
+                return self
+            case Neg(Neg(f)):
+                return f.simp_double_neg
+            case UnaryOperator(f):
+                return self.__class__(f.simp_double_neg)
+            case BinaryOperator(left, right):
+                return self.__class__(left.simp_double_neg, right.simp_double_neg)
+            case _:
+                raise ValueError("UNREACHABLE")
 
     @cached_property
     def subs_imp(self) -> Formula:
@@ -220,18 +215,18 @@ class Formula:
         Función equivalente en la que se han sustituido las implicaciones
         utilizando la equivalencia A→B sii ((¬A)∨B).
         """
-        if isinstance(self, Var) or isinstance(self, Const):
-            return self
-        elif isinstance(self, Neg):
-            return Neg(self.f.subs_imp)
-        elif isinstance(self, And):
-            return And(self.left.subs_imp, self.right.subs_imp)
-        elif isinstance(self, Or):
-            return Or(self.left.subs_imp, self.right.subs_imp)
-        if isinstance(self, Imp):
-            return Or(Neg(self.left.subs_imp), self.right.subs_imp)
-        else:
-            raise ValueError("UNREACHABLE")
+        match self:
+            case Var() | Const():
+                return self
+            case UnaryOperator(f):
+                return self.__class__(f.subs_imp)
+            case Imp(left, right):
+                return Or(Neg(left.subs_imp), right.subs_imp)
+            case BinaryOperator(left, right):
+                return self.__class__(left.subs_imp, right.subs_imp)
+            case _:
+                raise ValueError("UNREACHABLE")
+
 
     @cached_property
     def push_neg(self) -> Formula:
@@ -240,23 +235,23 @@ class Formula:
         dentro posible, utilizando las fórmulas de De Morgan.
         También se han eliminado las dobles negaciones.
         """
-        if isinstance(self, Var) or isinstance(self, Const):
-            return self
-        elif isinstance(self, Neg):
-            if isinstance(self.f, Var) or isinstance(self.f, Const):
+        match self:
+            case Var() | Const():
+                return self
+            case Neg(Var()) | Neg(Const()) :
                 return Neg(self.f)
-            elif isinstance(self.f, Neg):
-                return self.f.f.push_neg
-            elif isinstance(self.f, And):
-                return Or(Neg(self.f.left).push_neg, Neg(self.f.right).push_neg)
-            elif isinstance(self.f, Or):
-                return And(Neg(self.f.left).push_neg, Neg(self.f.right).push_neg)
-            elif isinstance(self.f, Imp):
-                return And(self.f.left.push_neg, Neg(self.f.right).push_neg)
-        elif isinstance(self, BinaryOperator):
-            return self.__class__(self.left.push_neg, self.right.push_neg)
-        else:
-            raise ValueError(f"UNREACHABLE")
+            case Neg(Neg(f)):
+                return f.push_neg
+            case Neg(And(left, right)):
+                return Or(Neg(left).push_neg, Neg(right).push_neg)
+            case Neg(Or(left, right)):
+                return And(Neg(left).push_neg, Neg(right).push_neg)
+            case Neg(Imp(left, right)):
+                return And(left.push_neg, Neg(right).push_neg)
+            case BinaryOperator(left, right):
+                return self.__class__(left.push_neg, right.push_neg)
+            case _:
+                raise ValueError("UNREACHABLE")
 
     @cached_property
     def distribute_or_step(self) -> Formula:
@@ -267,41 +262,19 @@ class Formula:
         Como la recursión solo hace una pasada por el árbol de la función es
         posible que queden términos pendientes de simplificar.
         """
-        if isinstance(self, Var) or isinstance(self, Const):
-            return self
-        elif isinstance(self, Neg):
-            return self
-        elif isinstance(self, And):
-            return And(self.left.distribute_or_step, self.right.distribute_or_step)
-        elif isinstance(self, Or):
-            if isinstance(self.left, And):
-                # Propiedad distributiva de la disyunción en el primer parámetro
-                return And(
-                    Or(
-                        self.left.left.distribute_or_step, self.right.distribute_or_step
-                    ),
-                    Or(
-                        self.left.right.distribute_or_step,
-                        self.right.distribute_or_step,
-                    ),
-                )
-            elif isinstance(self.right, And):
-                # Propiedad distributiva de la disyunción en el segundo parámetro
-                return And(
-                    Or(
-                        self.left.distribute_or_step, self.right.left.distribute_or_step
-                    ),
-                    Or(
-                        self.left.distribute_or_step,
-                        self.right.right.distribute_or_step,
-                    ),
-                )
-            else:
-                return Or(self.left.distribute_or_step, self.right.distribute_or_step)
-        if isinstance(self, Imp):
-            return Imp(self.left.distribute_or_step, self.right.distribute_or_step)
-        else:
-            raise ValueError("UNREACHABLE")
+        match self:
+            case Var() | Const():
+                return self
+            case UnaryOperator(f):
+                return self.__class__(f.distribute_or_step)
+            case Or(And(A, B), C):
+                return And(Or(A.distribute_or_step, C.distribute_or_step), Or(B.distribute_or_step, C.distribute_or_step))
+            case Or(A, And(B, C)):
+                return And(Or(A.distribute_or_step,B.distribute_or_step), Or(A.distribute_or_step,C.distribute_or_step))
+            case BinaryOperator(left, right):
+                return self.__class__(left.distribute_or_step, right.distribute_or_step)
+            case _:
+                raise ValueError("UNREACHABLE")
 
     @cached_property
     def distribute_or(self) -> Formula:
@@ -373,10 +346,13 @@ class Formula:
         for l in self.CNF_structured:
             affirmative, negative = set(), set()
             for f in l:
-                if isinstance(f, Neg):
-                    negative.add(f.f)
-                else:
-                    affirmative.add(f)
+                match f:
+                    case Neg(f):
+                        negative.add(f)
+                    case Var() | Const():
+                        affirmative.add(f)
+                    case _:
+                        raise ValueError("UNREACHABLE")
             if len(affirmative.intersection(negative)) == 0:
                 return False
         return True
@@ -384,6 +360,7 @@ class Formula:
 
 class UnaryOperator(Formula):
     symbol: str
+    __match_args__ = ("f",)
 
     def __init__(self, f: Formula) -> None:
         self.f = f
@@ -401,6 +378,7 @@ class UnaryOperator(Formula):
 
 class BinaryOperator(Formula):
     symbol: str
+    __match_args__ = ("left", "right")
 
     def __init__(self, left: Formula, right: Formula):
         self.left, self.right = left, right
