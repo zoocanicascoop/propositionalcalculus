@@ -15,9 +15,8 @@ class Formula:
     def str_polish(self) -> str:
         raise NotImplementedError()
 
-
     @staticmethod
-    def parse_polish(string: str, stack: list[Formula]=[]) -> Formula | None:
+    def parse_polish(string: str, stack: list[Formula] = []) -> Formula | None:
         if len(string) == 0:
             return stack.pop()
         match string[-1]:
