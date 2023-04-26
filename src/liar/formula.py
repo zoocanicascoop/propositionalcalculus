@@ -15,62 +15,42 @@ class Formula:
     def str_polish(self) -> str:
         raise NotImplementedError()
 
-    # @staticmethod
-    # def parse_polish_rec(string: str) -> tuple[Formula, list[Formula]]:
-    #     if " " in string:
-    #         token, tokens = string.split(" ", 1)
-    #         if token == "Neg":
-    #             f, stack = Formula.parse_polish_rec(tokens)
-    #             return (Neg(f), stack)
-    #         elif token == "And":
-    #             f1, stack = Formula.parse_polish_rec(tokens)
-    #             f2 = stack.pop()
-    #             return (And(f1, f2), stack)
-    #         elif token == "Or":
-    #             f1, stack = Formula.parse_polish_rec(tokens)
-    #             f2 = stack.pop()
-    #             return (Or(f1, f2), stack)
-    #         elif token == "Imp":
-    #             f1, stack = Formula.parse_polish_rec(tokens)
-    #             f2 = stack.pop()
-    #             return (Imp(f1, f2), stack)
-    #         elif token == "T" or token == "F":
-    #             f = Const.TRUE if token == "T" else Const.FALSE
-    #             f1, stack = Formula.parse_polish_rec(tokens)
-    #             return (f, [f1]+stack)
-    #         else:
-    #             f = Var(token)
-    #             f1, stack = Formula.parse_polish_rec(tokens)
-    #             return (f, [f1]+stack)
-    #     else:
-    #         return (None, [])
 
     @staticmethod
-    def parse_polish(string: str) -> Formula | None:
-        ...
-
-    # def graph(self, parent_name: str ="", dot: graphviz.Graph | None = None) -> graphviz.Graph:
-    #     if dot is None:
-    #         dot = graphviz.Graph()
-    #     else:
-    #         print(dot.source)
-    #     if isinstance(self, Var) or isinstance(self, Const):
-    #         name = f"{parent_name}{self}"
-    #         dot.node(name, f"{self}")
-    #     elif isinstance(self, UnaryOperator):
-    #         name = f"{parent_name}{self.__class__.__name__}"
-    #         dot.node(name, self.symbol)
-    #         self.f.graph(name, dot)
-    #     elif isinstance(self, BinaryOperator):
-    #         name = f"{parent_name}{self.__class__.__name__}"
-    #         dot.node(name, self.symbol)
-    #         self.left.graph(name+"l", dot)
-    #         self.right.graph(name+"r",  dot)
-    #     else:
-    #         raise ValueError("UNREACHABLE")
-    #     if parent_name:
-    #        dot.edge(parent_name, name)
-    #     return dot
+    def parse_polish(string: str, stack: list[Formula]=[]) -> Formula | None:
+        if len(string) == 0:
+            return stack.pop()
+        match string[-1]:
+            case " ":
+                return Formula.parse_polish(string[0:-1], stack)
+            case Neg.symbol:
+                assert len(stack) >= 1
+                f = stack.pop()
+                stack.append(Neg(f))
+                return Formula.parse_polish(string[0:-1], stack)
+            case And.symbol:
+                assert len(stack) >= 2
+                A = stack.pop()
+                B = stack.pop()
+                stack.append(And(A, B))
+            case Or.symbol:
+                assert len(stack) >= 2
+                A = stack.pop()
+                B = stack.pop()
+                stack.append(Or(A, B))
+            case Imp.symbol:
+                assert len(stack) >= 2
+                A = stack.pop()
+                B = stack.pop()
+                stack.append(Imp(A, B))
+            case "T":
+                stack.append(Const.TRUE)
+            case "F":
+                stack.append(Const.FALSE)
+            case _ as c:
+                assert c in Var.var_names
+                stack.append(Var(c))
+        return Formula.parse_polish(string[0:-1], stack)
 
     @cached_property
     def graph(self):
@@ -486,9 +466,8 @@ class Var(Formula):
     def str_polish(self):
         return str(self)
 
-
     @staticmethod
-    def generate(n: int, random: bool = False) -> list[Var]: 
+    def generate(n: int, random: bool = False) -> list[Var]:
         """
         Función que genera una lista de variables.
 
@@ -498,7 +477,9 @@ class Var(Formula):
         assert n <= len(
             Var.var_names
         ), "No hay suficientes nombres de variables para escojer"
-        return list(map(Var, sample(Var.var_names, n) if random else Var.var_names[0:n]))
+        return list(
+            map(Var, sample(Var.var_names, n) if random else Var.var_names[0:n])
+        )
 
 
 class Const(Formula, Enum):

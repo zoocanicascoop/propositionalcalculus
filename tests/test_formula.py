@@ -24,6 +24,12 @@ def test_var_str():
         assert str(v) == v.value
 
 
+def test_polish_notation(random_formula: Formula):
+    assert (
+        Formula.parse_polish(random_formula.str_polish) == random_formula
+    ), f"No se ha podido parsear correctamente la fórmula {random_formula.str_polish}"
+
+
 def test_len_vars_consts(random_formula: Formula):
     match random_formula:
         case Var() | Const():
@@ -111,7 +117,7 @@ def test_is_tauto_congruent(random_formula: Formula):
 
 
 def test_subs_examples():
-    A,B = Var.generate(2)
+    A, B = Var.generate(2)
 
     assert (A & B).subs({A: A & B}) == (A & B) & B
     assert (~B).subs({A: A & B}) == ~B
