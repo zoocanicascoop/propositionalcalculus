@@ -15,7 +15,7 @@ from liar.table import is_tauto
 
 @pytest.fixture(scope="function")
 def random_formula() -> Formula:
-    return Formula.random(10, 100)
+    return Formula.random(10, 100, True)
 
 
 def test_var_str():
@@ -83,8 +83,15 @@ def test_distribute_or(random_formula: Formula):
         case _:
             pass
 
+def test_simp_const(random_formula: Formula):
+    f = random_formula.simp_const
+    match f:
+        case Const():
+            pass
+        case _:
+            assert f.consts == set(), f"La fórmula {f} no debería contener constantes"
 
-def test_is_tauto_congjuent(random_formula: Formula):
+def test_is_tauto_congruent(random_formula: Formula):
     assert random_formula.is_tauto == is_tauto(random_formula)
 
 

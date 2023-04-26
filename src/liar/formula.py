@@ -147,9 +147,11 @@ class Formula:
                 raise ValueError("UNREACHABLE")
 
     @staticmethod
-    def random(n_vars: int, n_iters: int) -> Formula:
+    def random(n_vars: int, n_iters: int, include_consts: bool = False) -> Formula:
         """Generador de funciones aleatorias."""
-        formulas: set[Var | Neg | And | Or | Imp] = Var.generate(n_vars)
+        formulas: set[Const | Var | Neg | And | Or | Imp] = Var.generate(n_vars)
+        if include_consts:
+            formulas = formulas.union({Const.FALSE, Const.TRUE})
         current_formula = None
         assert n_iters > 0, "El número de iteraciones debe ser positivo"
         for _ in range(n_iters):
@@ -313,6 +315,55 @@ class Formula:
         return f1
 
     @cached_property
+    def simp_const_step(self) -> Formula:
+        match self:
+            case Var() | Const():
+                return self
+            case Neg(Const.TRUE):
+                    return Const.FALSE
+            case Neg(Const.FALSE):
+                    return Const.TRUE
+            case Neg(A):
+                return Neg(A.simp_const_step)
+            case And(Const.TRUE, B):
+                return B.simp_const_step
+            case And(A, Const.TRUE):
+                return A.simp_const_step
+            case And(Const.FALSE, _):
+                return Const.FALSE
+            case And(_, Const.FALSE):
+                return Const.FALSE
+            case Or(_, Const.TRUE):
+                return Const.TRUE
+            case Or(Const.TRUE, _):
+                return Const.TRUE
+            case Or(A, Const.FALSE):
+                return A.simp_const_step
+            case Or(Const.FALSE, A):
+                return A.simp_const_step
+            case Imp(Const.TRUE, A):
+                return A.simp_const_step
+            case Imp(_, Const.TRUE):
+                return Const.TRUE
+            case Imp(Const.FALSE, _):
+                return Const.TRUE
+            case Imp(A, Const.FALSE):
+                return Neg(A.simp_const_step)
+            case BinaryOperator(A, B):
+                return self.__class__(A.simp_const_step, B.simp_const_step)
+            case _:
+                raise ValueError("UNREACHABLE")
+
+    @cached_property
+    def simp_const(self) -> Formula:
+        f1, f2 = self, self.simp_const_step
+        while f2 != f1:
+            f1 = f2
+            f2 = f1.simp_const_step
+        return f1
+
+
+    @cached_property
     def CNF(self) -> Formula:
         """
         Forma Normal Conjuntiva.
@@ -324,7 +375,7 @@ class Formula:
         - Se aplica recursivamente la propiedad distributiva de la disyunción,
           mediante distribute_or
         """
-        return self.subs_imp.push_neg.distribute_or
+        return self.subs_imp.push_neg.distribute_or.simp_const
 
     @cached_property
     def CNF_structured(self) -> list[set[Formula]]:
@@ -371,9 +422,13 @@ class Formula:
             affirmative, negative = set(), set()
             for f in l:
                 match f:
+                    case Const.TRUE:
+                        return True
+                    case Const.FALSE:
+                        return False
                     case Neg(f):
                         negative.add(f)
-                    case Var() | Const():
+                    case Var():
                         affirmative.add(f)
                     case _:
                         raise ValueError("UNREACHABLE")
