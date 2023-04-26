@@ -208,7 +208,7 @@ class Formula:
                 return self
             case UnaryOperator(A):
                 return self.__class__(A.subs(rules))
-            case BinaryOperator(A ,B):
+            case BinaryOperator(A, B):
                 return self.__class__(A.subs(rules), B.subs(rules))
             case _:
                 raise ValueError("UNREACHABLE")
@@ -320,9 +320,9 @@ class Formula:
             case Var() | Const():
                 return self
             case Neg(Const.TRUE):
-                    return Const.FALSE
+                return Const.FALSE
             case Neg(Const.FALSE):
-                    return Const.TRUE
+                return Const.TRUE
             case Neg(A):
                 return Neg(A.simp_const_step)
             case And(Const.TRUE, B):
@@ -361,7 +361,6 @@ class Formula:
             f1 = f2
             f2 = f1.simp_const_step
         return f1
-
 
     @cached_property
     def CNF(self) -> Formula:

@@ -24,6 +24,19 @@ def test_var_str():
         assert str(v) == v.value
 
 
+def test_len_vars_consts(random_formula: Formula):
+    match random_formula:
+        case Var() | Const():
+            assert len(random_formula) == 1
+            assert len(random_formula) == len(random_formula.vars) + len(
+                random_formula.consts
+            )
+        case _:
+            assert len(random_formula) > len(random_formula.vars) + len(
+                random_formula.consts
+            )
+
+
 def test_simp_double_neg(random_formula: Formula):
     f = random_formula.simp_double_neg
     match f:
@@ -83,6 +96,7 @@ def test_distribute_or(random_formula: Formula):
         case _:
             pass
 
+
 def test_simp_const(random_formula: Formula):
     f = random_formula.simp_const
     match f:
@@ -91,15 +105,16 @@ def test_simp_const(random_formula: Formula):
         case _:
             assert f.consts == set(), f"La fórmula {f} no debería contener constantes"
 
+
 def test_is_tauto_congruent(random_formula: Formula):
     assert random_formula.is_tauto == is_tauto(random_formula)
 
 
 def test_subs_examples():
-    A = Var('A')
-    B = Var('B')
-    C = Var('C')
-    D = Var('D')
+    A = Var("A")
+    B = Var("B")
+    C = Var("C")
+    D = Var("D")
 
-    assert (A & B).subs({A: A & B}) == (A & B)&B
+    assert (A & B).subs({A: A & B}) == (A & B) & B
     assert (~B).subs({A: A & B}) == ~B
