@@ -111,10 +111,7 @@ def test_is_tauto_congruent(random_formula: Formula):
 
 
 def test_subs_examples():
-    A = Var("A")
-    B = Var("B")
-    C = Var("C")
-    D = Var("D")
+    A,B = Var.generate(2)
 
     assert (A & B).subs({A: A & B}) == (A & B) & B
     assert (~B).subs({A: A & B}) == ~B

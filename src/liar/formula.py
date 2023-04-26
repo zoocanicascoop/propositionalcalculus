@@ -149,7 +149,7 @@ class Formula:
     @staticmethod
     def random(n_vars: int, n_iters: int, include_consts: bool = False) -> Formula:
         """Generador de funciones aleatorias."""
-        formulas: set[Const | Var | Neg | And | Or | Imp] = Var.generate(n_vars)
+        formulas: set[Const | Var | Neg | And | Or | Imp] = set(Var.generate(n_vars))
         if include_consts:
             formulas = formulas.union({Const.FALSE, Const.TRUE})
         current_formula = None
@@ -486,8 +486,9 @@ class Var(Formula):
     def str_polish(self):
         return str(self)
 
+
     @staticmethod
-    def generate(n: int, random: bool = False) -> set[Var]:
+    def generate(n: int, random: bool = False) -> list[Var]: 
         """
         Función que genera una lista de variables.
 
@@ -497,7 +498,7 @@ class Var(Formula):
         assert n <= len(
             Var.var_names
         ), "No hay suficientes nombres de variables para escojer"
-        return set(map(Var, sample(Var.var_names, n) if random else Var.var_names[0:n]))
+        return list(map(Var, sample(Var.var_names, n) if random else Var.var_names[0:n]))
 
 
 class Const(Formula, Enum):
