@@ -16,12 +16,32 @@ class Formula:
         raise NotImplementedError()
 
     @staticmethod
+    def parse_symbol(symbol: str):
+        match symbol:
+            case "¬":
+                return Neg
+            case "∧":
+                return And
+            case "∨":
+                return Or
+            case "→":
+                return Imp
+            case "T":
+                return Const.TRUE
+            case "F":
+                return Const.FALSE
+            case _:
+                if symbol in Var.var_names:
+                    return Var
+                else:
+                    raise ValueError("invalid symbol")
+
+    @staticmethod
     def parse_polish(string: str, stack: list[Formula] = []) -> Formula | None:
+        string = string.replace(" ","")
         if len(string) == 0:
             return stack.pop()
         match string[-1]:
-            case " ":
-                return Formula.parse_polish(string[0:-1], stack)
             case Neg.symbol:
                 assert len(stack) >= 1
                 f = stack.pop()
