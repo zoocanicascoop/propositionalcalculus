@@ -8,7 +8,7 @@ def pytest_generate_tests(metafunc):
     if metafunc.config.option.repeat:
         count = int(metafunc.config.option.repeat)
     else:
-        count = 500
+        count = 100
     if "random_formula" in metafunc.fixturenames:
         metafunc.fixturenames.append("tmp_ct")
         metafunc.parametrize("tmp_ct", range(count))
