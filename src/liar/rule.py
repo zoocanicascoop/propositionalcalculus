@@ -14,49 +14,32 @@ class Rule:
         def match_inner(
             pattern: Formula, value: Formula, bindings: dict[Var, Formula]
         ) -> bool:
-            print(f"{pattern  = }")
-            print(f"{value    = }")
-            print(f"{bindings = }")
             match (pattern, value):
                 case (Const.TRUE, Const.TRUE):
-                    print("case (Const.TRUE, Const.TRUE):")
-                    input("\n --- Press ENTER to continue ---\n")
                     return True
                 case (Const.FALSE, Const.FALSE):
-                    print("case (Const.FALSE, Const.FALSE):")
-                    input("\n --- Press ENTER to continue ---\n")
                     return True
                 case (Var() as v, _):
-                    print("case (Var() as v, _):")
-                    input("\n --- Press ENTER to continue ---\n")
                     if not v in bindings:
                         bindings[v] = value
                     elif bindings[v] != value:
                         return False
                     return True
                 case (UnaryOperator(A), UnaryOperator(B)):
-                    print("case (UnaryOperator(A), UnaryOperator(B)):")
-                    input("\n --- Press ENTER to continue ---\n")
                     if pattern.__class__ != value.__class__:
                         return False
                     return match_inner(A, B, bindings)
                 case (BinaryOperator(A, B), BinaryOperator(C, D)):
-                    print("case (BinaryOperator(A, B), BinaryOperator(C, D)):")
-                    input("\n --- Press ENTER to continue ---\n")
                     if pattern.__class__ != value.__class__:
                         return False
                     return match_inner(A, C, bindings) and match_inner(B, D, bindings)
                 case _:
-                    print("case _:")
-                    input("\n --- Press ENTER to continue ---\n")
                     return False
 
         bindings: dict[Var, Formula] = {}
         if match_inner(self.head, value, bindings):
-            print(f"Returning {bindings = }")
             return bindings
         else:
-            print("Returning None")
             return None
 
     def apply(self, value: Formula) -> Formula | None:
