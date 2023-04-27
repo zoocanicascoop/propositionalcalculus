@@ -38,7 +38,7 @@ class Formula:
 
     @staticmethod
     def parse_polish(string: str, stack: list[Formula] = []) -> Formula | None:
-        string = string.replace(" ","")
+        string = string.replace(" ", "")
         if len(string) == 0:
             return stack.pop()
         match string[-1]:
