@@ -12,6 +12,7 @@ from .formula import (
     binary_operators,
 )
 from .table import Table, is_tauto
+from .rule import Rule, InferenceRule
 
 __all__ = [
     "Formula",
@@ -27,4 +28,6 @@ __all__ = [
     "binary_operators",
     "Table",
     "is_tauto",
+    "Rule", 
+    "InferenceRule", 
 ]
