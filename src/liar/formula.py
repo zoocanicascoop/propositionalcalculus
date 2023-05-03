@@ -3,6 +3,7 @@ from enum import Enum
 from functools import cached_property
 from random import choice, sample
 
+
 class Formula:
     def __str__(self):
         return repr(self)
@@ -74,6 +75,7 @@ class Formula:
     def render_graph(self, path="./graph.gv", view=True):
         import graphviz
         from graphviz.backend.rendering import pathlib
+
         filepath = pathlib.Path(path)
         filepath.write_text(self.graph, encoding="utf8")
         graphviz.render("dot", "pdf", filepath).replace("\\", "/")
