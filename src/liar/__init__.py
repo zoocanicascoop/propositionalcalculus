@@ -28,6 +28,6 @@ __all__ = [
     "binary_operators",
     "Table",
     "is_tauto",
-    "Rule", 
-    "InferenceRule", 
+    "Rule",
+    "InferenceRule",
 ]
