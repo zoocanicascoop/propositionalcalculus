@@ -212,6 +212,39 @@ class Formula:
             case _:
                 raise ValueError("UNREACHABLE")
 
+    def traverse_inorder(self, return_subformula: bool = False):
+        match self:
+            case Var() | Const():
+                yield self
+            case UnaryOperator(A):
+                if return_subformula:
+                    yield self
+                else:
+                    yield self.__class__
+                yield from A.traverse_inorder(return_subformula)
+            case BinaryOperator(A,B):
+                if return_subformula:
+                    yield self
+                else:
+                    yield self.__class__
+                yield from A.traverse_inorder(return_subformula)
+                yield from B.traverse_inorder(return_subformula)
+
+    def traverse_breadth(self, return_subformula: bool = False):
+        queue = [self]
+        while len(queue) > 0:
+            v = queue.pop()
+            yield v if return_subformula else v.__class__
+            match v:
+                case Var() | Const():
+                    pass
+                case UnaryOperator(A):
+                    queue.insert(0, A)
+                case BinaryOperator(A, B):
+                    queue.insert(0, A)
+                    queue.insert(0, B)
+
+
     @cached_property
     def simp_double_neg(self) -> Formula:
         """
@@ -306,7 +339,7 @@ class Formula:
         """
         Función equivalente en la que se ha aplicado todas las veces posible la
         propiedad distributiva de la disyunción.
-        """
+        """ 
         f1, f2 = self, self.distribute_or_step
         while f2 != f1:
             f1 = f2
