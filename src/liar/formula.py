@@ -1,8 +1,12 @@
 from __future__ import annotations
+from collections.abc import Iterable
 from enum import Enum
 from functools import cached_property
 from random import choice, sample
 
+class OrderType(Enum):
+    INORDER = 0
+    BREADTH_FIRST = 1
 
 class Formula:
     def __str__(self):
@@ -212,29 +216,30 @@ class Formula:
             case _:
                 raise ValueError("UNREACHABLE")
 
-    def traverse_inorder(self, return_subformula: bool = False):
+    def traverse(self, order_type : OrderType = OrderType.BREADTH_FIRST):
+        match order_type:
+            case OrderType.INORDER:
+                return self.traverse_inorder()
+            case OrderType.BREADTH_FIRST:
+                return self.traverse_breadth()
+
+    def traverse_inorder(self) -> Iterable[Formula]:
         match self:
             case Var() | Const():
                 yield self
             case UnaryOperator(A):
-                if return_subformula:
-                    yield self
-                else:
-                    yield self.__class__
-                yield from A.traverse_inorder(return_subformula)
+                yield self
+                yield from A.traverse_inorder()
             case BinaryOperator(A,B):
-                if return_subformula:
-                    yield self
-                else:
-                    yield self.__class__
-                yield from A.traverse_inorder(return_subformula)
-                yield from B.traverse_inorder(return_subformula)
+                yield self
+                yield from A.traverse_inorder()
+                yield from B.traverse_inorder()
 
-    def traverse_breadth(self, return_subformula: bool = False):
+    def traverse_breadth(self) -> Iterable[Formula]:
         queue = [self]
         while len(queue) > 0:
             v = queue.pop()
-            yield v if return_subformula else v.__class__
+            yield v
             match v:
                 case Var() | Const():
                     pass
