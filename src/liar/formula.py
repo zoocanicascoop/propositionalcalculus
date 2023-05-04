@@ -202,17 +202,17 @@ class Formula:
             case _:
                 raise ValueError("UNREACHABLE")
 
-    def subs(self, rules: dict[Var, Formula]) -> Formula:
+    def subs(self, binding: dict[Var, Formula]) -> Formula:
         # assert set(rules.keys()).issubset(self.vars)
         match self:
             case Var():
-                return rules[self] if self in rules else self
+                return binding[self] if self in binding else self
             case Const():
                 return self
             case UnaryOperator(A):
-                return self.__class__(A.subs(rules))
+                return self.__class__(A.subs(binding))
             case BinaryOperator(A, B):
-                return self.__class__(A.subs(rules), B.subs(rules))
+                return self.__class__(A.subs(binding), B.subs(binding))
             case _:
                 raise ValueError("UNREACHABLE")
 
