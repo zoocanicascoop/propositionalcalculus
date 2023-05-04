@@ -1,5 +1,4 @@
 from collections.abc import Iterable
-from functools import cached_property
 from .formula import Formula, Var, Const, UnaryOperator, BinaryOperator
 
 
@@ -45,24 +44,6 @@ class Rule:
                 yield None
 
     def apply(self, value: Formula) -> Formula | None:
-        bindings = self.match(value)
-        if bindings is not None:
-            return self.body.subs(bindings)
+        ...
 
 
-class InferenceRule:
-    def __init__(
-        self, assumptions: Formula | tuple[Formula, ...], conclusion: Formula
-    ) -> None:
-        self.assumptions = (
-            (assumptions,) if isinstance(assumptions, Formula) else assumptions
-        )
-        self.conclusion = conclusion
-
-    @cached_property
-    def is_sound(self) -> bool:
-        f = Const.TRUE
-        for assumption in self.assumptions:
-            f = f & assumption
-        f = f >> self.conclusion
-        return f.is_tauto

@@ -12,7 +12,8 @@ from .formula import (
     binary_operators,
 )
 from .table import Table, is_tauto
-from .rule import Rule, InferenceRule
+from .rule import Rule
+from .inference import InferenceRule
 
 __all__ = [
     "Formula",
