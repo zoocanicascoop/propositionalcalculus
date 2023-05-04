@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from functools import cached_property
 from .formula import Formula, Var, Const, UnaryOperator, BinaryOperator
 
@@ -10,7 +11,7 @@ class Rule:
             self.head.vars
         ), "Las variables del cuerpo de la regla deben aparecer en la cabecera"
 
-    def match(self, value: Formula) -> dict[Var, Formula] | None:
+    def match(self, value: Formula) -> Iterable[dict[Var, Formula] | None]:
         def match_inner(
             pattern: Formula, value: Formula, bindings: dict[Var, Formula]
         ) -> bool:
@@ -35,12 +36,13 @@ class Rule:
                     return match_inner(A, C, bindings) and match_inner(B, D, bindings)
                 case _:
                     return False
-
-        bindings: dict[Var, Formula] = {}
-        if match_inner(self.head, value, bindings):
-            return bindings
-        else:
-            return None
+        for subformula in value.traverse():
+            assert isinstance(subformula, Formula)
+            bindings: dict[Var, Formula] = {}
+            if match_inner(self.head, subformula, bindings):
+                yield bindings
+            else:
+                yield None
 
     def apply(self, value: Formula) -> Formula | None:
         bindings = self.match(value)
