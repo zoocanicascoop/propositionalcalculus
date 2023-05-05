@@ -4,9 +4,11 @@ from enum import Enum
 from functools import cached_property
 from random import choice, sample
 
+
 class OrderType(Enum):
     INORDER = 0
     BREADTH_FIRST = 1
+
 
 class Formula:
     def __str__(self):
@@ -216,7 +218,7 @@ class Formula:
             case _:
                 raise ValueError("UNREACHABLE")
 
-    def traverse(self, order_type : OrderType = OrderType.BREADTH_FIRST):
+    def traverse(self, order_type: OrderType = OrderType.BREADTH_FIRST):
         match order_type:
             case OrderType.INORDER:
                 return self.traverse_inorder()
@@ -230,7 +232,7 @@ class Formula:
             case UnaryOperator(A):
                 yield self
                 yield from A.traverse_inorder()
-            case BinaryOperator(A,B):
+            case BinaryOperator(A, B):
                 yield self
                 yield from A.traverse_inorder()
                 yield from B.traverse_inorder()
@@ -248,7 +250,6 @@ class Formula:
                 case BinaryOperator(A, B):
                     queue.insert(0, A)
                     queue.insert(0, B)
-
 
     @cached_property
     def simp_double_neg(self) -> Formula:
@@ -344,7 +345,7 @@ class Formula:
         """
         Función equivalente en la que se ha aplicado todas las veces posible la
         propiedad distributiva de la disyunción.
-        """ 
+        """
         f1, f2 = self, self.distribute_or_step
         while f2 != f1:
             f1 = f2

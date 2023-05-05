@@ -1,7 +1,10 @@
 from collections.abc import Iterator
 from .formula import Formula, Var, Const, UnaryOperator, BinaryOperator
 
-def pattern_match(pattern: Formula, subject: Formula)-> Iterator[dict[Var, Formula] | None]:
+
+def pattern_match(
+    pattern: Formula, subject: Formula
+) -> Iterator[dict[Var, Formula] | None]:
     def match_inner(
         current_pattern: Formula, value: Formula, bindings: dict[Var, Formula]
     ) -> bool:
@@ -34,7 +37,6 @@ def pattern_match(pattern: Formula, subject: Formula)-> Iterator[dict[Var, Formu
             yield bindings
         else:
             yield None
-    
 
 
 class Rule:
@@ -50,5 +52,3 @@ class Rule:
 
     def apply(self, value: Formula) -> Formula | None:
         ...
-
-

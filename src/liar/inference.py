@@ -6,11 +6,13 @@ from .formula import Formula, Const, Var
 
 Binding = dict[Var, Formula]
 
-def merge_bindings(a:Binding, b:Binding) -> Binding | None:
+
+def merge_bindings(a: Binding, b: Binding) -> Binding | None:
     for key in a.keys():
         if key in b and a[key] != b[key]:
             return None
     return a | b
+
 
 class InferenceRule:
     def __init__(
@@ -21,11 +23,10 @@ class InferenceRule:
         )
         self.conclusion = conclusion
 
-
-    def __str__(self)-> str:
+    def __str__(self) -> str:
         assumptions = ", ".join(map(str, self.assumptions))
         conclusion = str(self.conclusion)
-        bar = "—"*max(len(assumptions), len(conclusion))
+        bar = "—" * max(len(assumptions), len(conclusion))
         return f"{assumptions}\n{bar}\n{conclusion}"
 
     @cached_property
@@ -36,8 +37,10 @@ class InferenceRule:
         f = f >> self.conclusion
         return f.is_tauto
 
-    def apply(self, assumptions: Formula | tuple[Formula,...]) -> Formula | None:
-        assumptions = ( (assumptions, ) if isinstance(assumptions, Formula) else assumptions)
+    def apply(self, assumptions: Formula | tuple[Formula, ...]) -> Formula | None:
+        assumptions = (
+            (assumptions,) if isinstance(assumptions, Formula) else assumptions
+        )
         if len(self.assumptions) != len(self.assumptions):
             return None
         global_binding = {}
@@ -49,7 +52,6 @@ class InferenceRule:
             if global_binding is None:
                 return None
         return self.conclusion.subs(global_binding)
-
 
     def specialize(self, binding: dict[Var, Formula]) -> InferenceRule:
         assumptions = tuple(map(lambda a: a.subs(binding), self.assumptions))
@@ -74,13 +76,18 @@ class InferenceRule:
         return True
 
 
-class Proof():
-    def __init__(self, assumptions: list[Formula], conclusion: Formula, steps: list[tuple[InferenceRule, int]]) -> None:
+class Proof:
+    def __init__(
+        self,
+        assumptions: list[Formula],
+        conclusion: Formula,
+        steps: list[tuple[InferenceRule, int]],
+    ) -> None:
         self.assumptions = assumptions
         self.conclusion = conclusion
         self.steps = steps
 
-    def check(self, verbose = False) -> bool:
+    def check(self, verbose=False) -> bool:
         state = self.assumptions
         i = len(state)
         if verbose:
