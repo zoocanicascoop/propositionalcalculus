@@ -1,5 +1,5 @@
 from .formula import Var
-from .rule import InferenceRule
+from .inference import InferenceRule
 
 A, B, C = Var.generate(3)
 
