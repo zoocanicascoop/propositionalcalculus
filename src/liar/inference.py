@@ -72,14 +72,6 @@ class InferenceRule:
         conclusion_binding: Binding | None = None,
     ) -> Formula | None:
         """
-        TODO: Atención: ahora mismo es necesario que todas las variables que
-        aparecen en la conclusión también aparezcan en las premisas, puesto que
-        el binding se obtiene de hacer pattern matching sobre las premisas.
-
-        Una forma de resolver esto puede ser pasando un binding parcial que
-        complemente la parte correspondiente a las variables de la conclusión
-        que no aparecen en las premisas.
-
         TODO: Devolver mensajes de error según el tipo de fallo de aplicación.
         """
 
