@@ -112,3 +112,4 @@ cython_debug/
 
 *.gv
 *.pdf
+pruebas.py
