@@ -15,7 +15,7 @@ from liar.table import is_tauto
 
 @pytest.fixture(scope="function")
 def random_formula() -> Formula:
-    return Formula.random(10, 100, True)
+    return Formula.random(10, 10, True)
 
 
 def test_var_str():

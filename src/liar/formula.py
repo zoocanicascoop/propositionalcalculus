@@ -162,7 +162,7 @@ class Formula:
                 raise ValueError("UNREACHABLE")
 
     @staticmethod
-    def random(*args) -> Formula:
+    def random(n_vars: int, max_depth: int, include_consts: bool = False) -> Formula:
         """
         Generates a random formula, represented in the reverse polish notation.
 
@@ -170,7 +170,9 @@ class Formula:
         :max_depth: maximum depth of the formula tree
         :include_consts: wether to include constants in the formula generation
         """
-        f = Formula.parse_polish(Formula.random_polish(*args))
+        f = Formula.parse_polish(
+            Formula.random_polish(n_vars, max_depth, include_consts)
+        )
         assert isinstance(f, Formula)
         return f
 
