@@ -2,7 +2,9 @@ from __future__ import annotations
 from collections.abc import Iterable
 from enum import Enum
 from functools import cached_property
-from random import choice, sample
+from random import choice, randint, sample
+
+Binding = dict["Var", "Formula"]
 
 
 class OrderType(Enum):
@@ -11,6 +13,10 @@ class OrderType(Enum):
 
 
 class Formula:
+    """
+    A class for representing propositional formulas of classical logic.
+    """
+
     def __str__(self):
         return repr(self)
 
@@ -20,6 +26,7 @@ class Formula:
 
     @staticmethod
     def parse_symbol(symbol: str):
+        """Parses a single symbol and returns the correspondent Var, Const or Operator."""
         match symbol:
             case "¬":
                 return Neg
@@ -41,6 +48,7 @@ class Formula:
 
     @staticmethod
     def parse_polish(string: str, stack: list[Formula] = []) -> Formula | None:
+        """Parses a formula expressed in the reversed polish notation."""
         string = string.replace(" ", "")
         if len(string) == 0:
             return stack.pop()
@@ -76,9 +84,11 @@ class Formula:
 
     @cached_property
     def graph(self):
+        """Graphviz code for visually representing the formula tree."""
         return "graph {\n  " + "\n  ".join(self._graph_rec()) + "\n}"
 
-    def render_graph(self, path="./graph.gv", view=True):
+    def render_graph(self, path="./graph.gv"):
+        """Utility for rendering the formula tree with graphviz."""
         import graphviz
         from graphviz.backend.rendering import pathlib
 
@@ -152,31 +162,75 @@ class Formula:
                 raise ValueError("UNREACHABLE")
 
     @staticmethod
-    def random(n_vars: int, n_iters: int, include_consts: bool = False) -> Formula:
-        """Generador de funciones aleatorias."""
-        formulas: set[Const | Var | Neg | And | Or | Imp] = set(Var.generate(n_vars))
-        if include_consts:
-            formulas = formulas.union({Const.FALSE, Const.TRUE})
-        current_formula = None
-        assert n_iters > 0, "El número de iteraciones debe ser positivo"
-        for _ in range(n_iters):
-            option = choice(["unary", "binary"])
-            if option == "unary":
-                Op = choice(unary_operators)
-                f = choice(list(formulas))
-                current_formula = Op(f)
-            elif option == "binary":
-                Op = choice(binary_operators)
-                f1, f2 = sample(list(formulas), 2)
-                current_formula = Op(f1, f2)
-            assert isinstance(current_formula, Formula)
-            formulas.add(current_formula)
-        assert isinstance(current_formula, Formula)
-        return current_formula
+    def random(*args) -> Formula:
+        """
+        Generates a random formula, represented in the reverse polish notation.
+
+        :n_vars: number of variables from wich to choice when generating the random formula
+        :max_depth: maximum depth of the formula tree
+        :include_consts: wether to include constants in the formula generation
+        """
+        f = Formula.parse_polish(Formula.random_polish(*args))
+        assert isinstance(f, Formula)
+        return f
+
+    @staticmethod
+    def random_polish(n_vars: int, max_depth: int, include_consts: bool = False) -> str:
+        """
+        Generates a random formula, represented in the reverse polish notation.
+
+        :n_vars: number of variables from wich to choice when generating the random string
+        :max_depth: maximum depth of the formula tree
+        :include_consts: wether to include constants in the formula generation
+        """
+        assert max_depth >= 1
+        if max_depth == 1:
+            if include_consts and randint(0, 1) == 0:
+                return choice(["T", "F"])
+            return str(choice(Var.generate(n_vars)))
+        else:
+            f_ = lambda: Formula.random_polish(
+                n_vars, randint(1, max_depth - 1), include_consts
+            )
+            match randint(0, 3):
+                case 0:
+                    return f"¬ {f_()}"
+                case 1:
+                    return f"∧ {f_()} {f_()}"
+                case 2:
+                    return f"∨ {f_()} {f_()}"
+                case 3:
+                    return f"→ {f_()} {f_()}"
+                case _:
+                    raise ValueError("UNREACHABLE")
+
+    # Old implementation of random
+    # @staticmethod
+    # def random(n_vars: int, n_iters: int, include_consts: bool = False) -> Formula:
+    #     """Random formula generator."""
+    #     formulas: set[Const | Var | Neg | And | Or | Imp] = set(Var.generate(n_vars))
+    #     if include_consts:
+    #         formulas = formulas.union({Const.FALSE, Const.TRUE})
+    #     current_formula = None
+    #     assert n_iters > 0, "El número de iteraciones debe ser positivo"
+    #     for _ in range(n_iters):
+    #         option = choice(["unary", "binary"])
+    #         if option == "unary":
+    #             Op = choice(unary_operators)
+    #             f = choice(list(formulas))
+    #             current_formula = Op(f)
+    #         elif option == "binary":
+    #             Op = choice(binary_operators)
+    #             f1, f2 = sample(list(formulas), 2)
+    #             current_formula = Op(f1, f2)
+    #         assert isinstance(current_formula, Formula)
+    #         formulas.add(current_formula)
+    #     assert isinstance(current_formula, Formula)
+    #     return current_formula
 
     @cached_property
     def vars(self) -> set["Var"]:
-        """Conjunto de variables presentes en la fórmula."""
+        """Set of variables present in the formula."""
         match self:
             case Var():
                 return {self}
@@ -191,7 +245,7 @@ class Formula:
 
     @cached_property
     def consts(self) -> set["Const"]:
-        """Conjunto de constantes presentes en la fórmula."""
+        """Set of constants present in the formula."""
         match self:
             case Var():
                 return set()
@@ -204,8 +258,12 @@ class Formula:
             case _:
                 raise ValueError("UNREACHABLE")
 
-    def subs(self, binding: dict[Var, Formula]) -> Formula:
-        # assert set(rules.keys()).issubset(self.vars)
+    def subs(self, binding: Binding) -> Formula:
+        """
+        Substitutes variables of the formula with formulas.
+
+        :binding: the dictionary that maps variables to formulas.
+        """
         match self:
             case Var():
                 return binding[self] if self in binding else self
@@ -218,7 +276,10 @@ class Formula:
             case _:
                 raise ValueError("UNREACHABLE")
 
-    def traverse(self, order_type: OrderType = OrderType.BREADTH_FIRST):
+    def traverse(
+        self, order_type: OrderType = OrderType.BREADTH_FIRST
+    ) -> Iterable[Formula]:
+        """Traverses the formula tree in the given OrderType."""
         match order_type:
             case OrderType.INORDER:
                 return self.traverse_inorder()
@@ -226,6 +287,7 @@ class Formula:
                 return self.traverse_breadth()
 
     def traverse_inorder(self) -> Iterable[Formula]:
+        """Inorder tree traversal."""
         match self:
             case Var() | Const():
                 yield self
@@ -238,6 +300,7 @@ class Formula:
                 yield from B.traverse_inorder()
 
     def traverse_breadth(self) -> Iterable[Formula]:
+        """Breadth first tree traversal."""
         queue = [self]
         while len(queue) > 0:
             v = queue.pop()
@@ -253,9 +316,7 @@ class Formula:
 
     @cached_property
     def simp_double_neg(self) -> Formula:
-        """
-        Función equivalente en la que se han elmiminado las dobles negaciones.
-        """
+        """Equivalent function where all double negations are simplified."""
         match self:
             case Var() | Const():
                 return self
@@ -271,8 +332,8 @@ class Formula:
     @cached_property
     def subs_imp(self) -> Formula:
         """
-        Función equivalente en la que se han sustituido las implicaciones
-        utilizando la equivalencia A→B sii ((¬A)∨B).
+        Equivalent funciton where all implications are substituted using the
+        A → B iff ¬A ∨ B equivalence.
         """
         match self:
             case Var() | Const():
@@ -289,9 +350,9 @@ class Formula:
     @cached_property
     def push_neg(self) -> Formula:
         """
-        Función equivalente en la que se han metido las negaciones todo lo
-        dentro posible, utilizando las fórmulas de De Morgan.
-        También se han eliminado las dobles negaciones.
+        Equivalent function where all the negations are pushed down into the
+        formula tree, using De Morgan formulas. Double negations are also
+        eliminated.
         """
         match self:
             case Var() | Const():
@@ -312,48 +373,59 @@ class Formula:
                 raise ValueError("UNREACHABLE")
 
     @cached_property
-    def distribute_or_step(self) -> Formula:
+    def distribute_or(self) -> Formula:
         """
-        Función equivalente aplicando recursivamente la propiedad distributiva
-        de la disyunción.
+        Equivalent function where the distributive property of the disjuntion is
+        applied.
+        """
+        f1, f2 = self, self._distribute_or_step
+        while f2 != f1:
+            f1 = f2
+            f2 = f1._distribute_or_step
+        return f1
 
-        Como la recursión solo hace una pasada por el árbol de la función es
-        posible que queden términos pendientes de simplificar.
+    @cached_property
+    def _distribute_or_step(self) -> Formula:
+        """
+        Equivalent function where the distributive property of the disjunction
+        is applied once in all subtrees of the formula.
         """
         match self:
             case Var() | Const():
                 return self
             case UnaryOperator(f):
-                return self.__class__(f.distribute_or_step)
+                return self.__class__(f._distribute_or_step)
             case Or(And(A, B), C):
                 return And(
-                    Or(A.distribute_or_step, C.distribute_or_step),
-                    Or(B.distribute_or_step, C.distribute_or_step),
+                    Or(A._distribute_or_step, C._distribute_or_step),
+                    Or(B._distribute_or_step, C._distribute_or_step),
                 )
             case Or(A, And(B, C)):
                 return And(
-                    Or(A.distribute_or_step, B.distribute_or_step),
-                    Or(A.distribute_or_step, C.distribute_or_step),
+                    Or(A._distribute_or_step, B._distribute_or_step),
+                    Or(A._distribute_or_step, C._distribute_or_step),
                 )
             case BinaryOperator(left, right):
-                return self.__class__(left.distribute_or_step, right.distribute_or_step)
+                return self.__class__(
+                    left._distribute_or_step, right._distribute_or_step
+                )
             case _:
                 raise ValueError("UNREACHABLE")
 
     @cached_property
-    def distribute_or(self) -> Formula:
+    def simp_const(self) -> Formula:
         """
-        Función equivalente en la que se ha aplicado todas las veces posible la
-        propiedad distributiva de la disyunción.
+        Equivalent formula where all the redundant constants and negations of
+        constants are simplified.
         """
-        f1, f2 = self, self.distribute_or_step
+        f1, f2 = self, self._simp_const_step
         while f2 != f1:
             f1 = f2
-            f2 = f1.distribute_or_step
+            f2 = f1._simp_const_step
         return f1
 
     @cached_property
-    def simp_const_step(self) -> Formula:
+    def _simp_const_step(self) -> Formula:
         match self:
             case Var() | Const():
                 return self
@@ -362,11 +434,11 @@ class Formula:
             case Neg(Const.FALSE):
                 return Const.TRUE
             case Neg(A):
-                return Neg(A.simp_const_step)
+                return Neg(A._simp_const_step)
             case And(Const.TRUE, B):
-                return B.simp_const_step
+                return B._simp_const_step
             case And(A, Const.TRUE):
-                return A.simp_const_step
+                return A._simp_const_step
             case And(Const.FALSE, _):
                 return Const.FALSE
             case And(_, Const.FALSE):
@@ -376,49 +448,46 @@ class Formula:
             case Or(Const.TRUE, _):
                 return Const.TRUE
             case Or(A, Const.FALSE):
-                return A.simp_const_step
+                return A._simp_const_step
             case Or(Const.FALSE, A):
-                return A.simp_const_step
+                return A._simp_const_step
             case Imp(Const.TRUE, A):
-                return A.simp_const_step
+                return A._simp_const_step
             case Imp(_, Const.TRUE):
                 return Const.TRUE
             case Imp(Const.FALSE, _):
                 return Const.TRUE
             case Imp(A, Const.FALSE):
-                return Neg(A.simp_const_step)
+                return Neg(A._simp_const_step)
             case BinaryOperator(A, B):
-                return self.__class__(A.simp_const_step, B.simp_const_step)
+                return self.__class__(A._simp_const_step, B._simp_const_step)
             case _:
                 raise ValueError("UNREACHABLE")
 
     @cached_property
-    def simp_const(self) -> Formula:
-        f1, f2 = self, self.simp_const_step
-        while f2 != f1:
-            f1 = f2
-            f2 = f1.simp_const_step
-        return f1
-
-    @cached_property
     def CNF(self) -> Formula:
         """
-        Forma Normal Conjuntiva.
+        Conjunctive Normal Form.
 
-        Se calcula aplicando el siguiente algoritmo:
-        - Se eliminan las implicaciones utilizando subs_imp
-        - Aplicación de push_neg para empujar las negaciones hacia las raíces
-          del árbol de la fórmula
-        - Se aplica recursivamente la propiedad distributiva de la disyunción,
-          mediante distribute_or
+        This normal form is calculated by appliying sequentially the following equivalences:
+        - All implications are removed using subs_imp,
+        - all negations are pushed down the formula tree with push_neg,
+        - the distributive property of disjuntion is applied with distribute_or,
+        - redundant constants are deleted using simp_const.
         """
         return self.subs_imp.push_neg.distribute_or.simp_const
 
     @cached_property
-    def CNF_structured(self) -> list[set[Formula]]:
+    def CNF_structured(self) -> list[set[Neg | Var | Const]]:
+        """
+        A structured version of the CNF.
+
+        This function returns a list of sets of simple formulas (negations of
+        variables, variables or constants).
+        """
         self = self.CNF
-        result: list[set[Formula]] = list()
-        current_set: set[Formula] = set()
+        result: list[set[Neg | Var | Const]] = list()
+        current_set: set[Neg | Var | Const] = set()
         i = 0
         f_str = str(self)
         while i < len(f_str):
@@ -454,7 +523,7 @@ class Formula:
 
     @cached_property
     def is_tauto(self) -> bool:
-        """Determina si la fórmula es una tautología, utilizando la CNF."""
+        """Determines if the formula is a tautology, using the formula CNF"""
         for l in self.CNF_structured:
             affirmative, negative = set(), set()
             for f in l:
