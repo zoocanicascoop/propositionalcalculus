@@ -48,18 +48,22 @@ class InferenceRule:
 
     @cached_property
     def arity(self) -> int:
+        """The number of assumptions of the inference rule."""
         return len(self.assumptions)
 
     @cached_property
     def assumptions_vars(self) -> set[Var]:
+        """Set of variables present in the rule assumptions."""
         return set().union(*[a.vars for a in self.assumptions])
 
     @cached_property
     def conclusion_vars(self) -> set[Var]:
+        """Set of variables present in the rule conclusion."""
         return self.conclusion.vars
 
     @cached_property
     def is_sound(self) -> bool:
+        """Wether the rule is coherent with the semantics."""
         f = Const.TRUE
         for assumption in self.assumptions:
             f = f & assumption
@@ -96,6 +100,9 @@ class InferenceRule:
             if global_binding is None:
                 return None
         return self.conclusion.subs(global_binding)
+
+    def __call__(self, *assumption_indices: int) -> ProofStepApplyRule:
+        return ProofStepApplyRule(self, assumption_indices)
 
     def specialize(self, binding: dict[Var, Formula]) -> InferenceRule:
         assumptions = tuple(map(lambda a: a.subs(binding), self.assumptions))
