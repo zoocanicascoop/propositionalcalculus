@@ -1,10 +1,25 @@
 from collections.abc import Iterator
-from .formula import Formula, Var, Const, UnaryOperator, BinaryOperator
+from .formula import Formula, Var, Const, UnaryOperator, BinaryOperator, OrderType
 
 
 def pattern_match(
-    pattern: Formula, subject: Formula
+    pattern: Formula,
+    subject: Formula,
+    traverse_order: OrderType = OrderType.BREADTH_FIRST,
 ) -> Iterator[dict[Var, Formula] | None]:
+    """
+    Pattern matching algorithm.
+
+    Given a pattern and a formula, this algorithm finds all occurrencies of the
+    pattern structure in the formula and subformulas, returning an iterator that
+    returns the binding for the current subtree, following a particular
+    traversal order.
+
+    :pattern: the pattern formula
+    :subject: the subject formula on which to search the pattern
+    :traverse_order: the tree order traversal type
+    """
+
     def match_inner(
         current_pattern: Formula, value: Formula, bindings: dict[Var, Formula]
     ) -> bool:
@@ -30,7 +45,7 @@ def pattern_match(
             case _:
                 return False
 
-    for subformula in subject.traverse():
+    for subformula in subject.traverse(traverse_order):
         assert isinstance(subformula, Formula)
         bindings: dict[Var, Formula] = {}
         if match_inner(pattern, subformula, bindings):
@@ -40,6 +55,11 @@ def pattern_match(
 
 
 class Rule:
+    """
+    Class for defining substitution rules based on pattern matching.
+
+    """
+
     def __init__(self, head: Formula, body: Formula):
         self.head = head
         self.body = body
