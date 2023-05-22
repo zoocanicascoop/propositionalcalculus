@@ -141,6 +141,9 @@ class Proof:
                         rule in self.rules
                     ), "All RuleApplication steps must use rules explicitly declared in the proof rules"
 
+    def __repr__(self):
+        return f"{', '.join(map(str, self.assumptions))} ⊢ {self.conclusion}"
+
     @property
     def ssssteps(self):
         """
