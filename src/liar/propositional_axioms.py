@@ -50,8 +50,12 @@ def assumption_to_implication(proof: PCProof, assumption: Formula) -> PCProof:
         steps.append(MP(i - 1, i))
         return PCProof(proof.assumptions.copy(), assumption >> proof.conclusion, steps)
     elif isinstance(proof.conclusion, Imp) and proof.conclusion.right == assumption:
+        # TODO: Revisar. ¿Hay que eliminar la assumption?
+        assumptions = proof.assumptions.copy()
+        assumptions.remove(assumption)
+
         return PCProof(
-            proof.assumptions.copy(),
+            assumptions,
             assumption >> proof.conclusion,
             [AxS(0, {A: proof.conclusion.left, B: assumption})],
         )
@@ -70,7 +74,6 @@ def assumption_to_implication(proof: PCProof, assumption: Formula) -> PCProof:
         )
         p2_conclusion = p2.conclusion
         assert isinstance(p2_conclusion, Imp)
-
         assumptions = p1.assumptions.copy()
         reindex_p2: dict[int, int] = dict()
         added_assumptions = 0
@@ -107,7 +110,9 @@ def assumption_to_implication(proof: PCProof, assumption: Formula) -> PCProof:
                 case f:
                     steps.append(f)
         steps.append(
-            AxS(2, {A: assumption, B: p1_conclusion.right, C: proof.conclusion})
+            AxS(1, {A: assumption, B: p1_conclusion.right, C: proof.conclusion})
         )
+        # TODO: Terminar. Hay que hacer dos MP, ¿Cuales son los indices?
+        # steps.append(PCProof.MP())
         # steps.append(PCProof.MP())
         return PCProof(assumptions, proof.conclusion, steps)
