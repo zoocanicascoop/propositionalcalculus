@@ -224,6 +224,9 @@ class AxiomSpecialization:
         self.axiom_index = axiom_index
         self.binding = binding
 
+    def __repr__(self):
+        return f"Ax {self.axiom_index} {self.binding}"
+
     def apply(self, axioms: list[Formula]) -> Formula:
         return axioms[self.axiom_index].subs(self.binding)
 
@@ -240,6 +243,9 @@ class RuleApplication:
         ), f"La cantidad de premisas debe coincidir con la aridad de la regla."
         self.rule = rule
         self.assumption_indices = assumption_indices
+
+    def __repr__(self):
+        return f"{self.rule.name} {', '.join(map(str, self.assumption_indices))}"
 
     def apply(self, current_assumptions: list[Formula]) -> Formula | None:
         for i in self.assumption_indices:
