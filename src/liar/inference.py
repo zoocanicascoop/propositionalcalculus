@@ -1,6 +1,5 @@
 from __future__ import annotations
 from functools import cached_property, reduce
-from typing import Union
 
 
 from .rule import pattern_match
@@ -65,16 +64,14 @@ class InferenceRule:
 
     def apply(
         self,
-        assumptions: Formula | tuple[Formula, ...],
+        assumptions: Formula | list[Formula],
         conclusion_binding: Binding | None = None,
     ) -> Formula | None:
         """
         TODO: Devolver mensajes de error según el tipo de fallo de aplicación.
         """
 
-        assumptions = (
-            (assumptions,) if isinstance(assumptions, Formula) else assumptions
-        )
+        assumptions = [assumptions] if isinstance(assumptions, Formula) else assumptions
 
         if len(self.assumptions) != len(assumptions):
             return None
@@ -95,7 +92,7 @@ class InferenceRule:
         return self.conclusion.subs(global_binding)
 
     def __call__(self, *assumption_indices: int) -> RuleApplication:
-        return RuleApplication(self, assumption_indices)
+        return RuleApplication(self, list(assumption_indices))
 
     def specialize(self, binding: dict[Var, Formula]) -> InferenceRule:
         assumptions = list(map(lambda a: a.subs(binding), self.assumptions))
@@ -118,9 +115,6 @@ class InferenceRule:
             if global_binding is None:
                 return False
         return True
-
-
-ProofStep = Union["RuleApplication", "AxiomSpecialization"]
 
 
 class Proof:
@@ -181,9 +175,7 @@ class Proof:
                 case AxiomSpecialization() as f:
                     steps.append(f)
                 case RuleApplication(rule, assumption_indices) as f:
-                    new_indices = tuple(
-                        map(lambda i_old: reindex_dict[i_old], assumption_indices)
-                    )
+                    new_indices = [reindex_dict[i] for i in assumption_indices]
                     steps.append(RuleApplication(rule, new_indices))
         return Proof(self.rules, self.axioms, assumptions, state[index], steps)
 
@@ -235,16 +227,14 @@ class AxiomSpecialization:
     def apply(self, axioms: list[Formula]) -> Formula:
         return axioms[self.axiom_index].subs(self.binding)
 
-    def pad(self, n: int) -> AxiomSpecialization:
-        return AxiomSpecialization(self.axiom_index + n, self.binding)
+
+AxS = AxiomSpecialization
 
 
 class RuleApplication:
     __match_args__ = ("rule", "assumption_indices")
 
-    def __init__(
-        self, rule: InferenceRule, assumption_indices: tuple[int, ...]
-    ) -> None:
+    def __init__(self, rule: InferenceRule, assumption_indices: list[int]) -> None:
         assert rule.arity == len(
             assumption_indices
         ), f"La cantidad de premisas debe coincidir con la aridad de la regla."
@@ -256,10 +246,8 @@ class RuleApplication:
             if i + 1 > len(current_assumptions):
                 return None
         return self.rule.apply(
-            tuple([current_assumptions[index] for index in self.assumption_indices])
+            [current_assumptions[index] for index in self.assumption_indices]
         )
 
-    def pad(self, n: int) -> RuleApplication:
-        return RuleApplication(
-            self.rule, tuple(map(lambda v: v + n, self.assumption_indices))
-        )
+
+ProofStep = RuleApplication | AxiomSpecialization
