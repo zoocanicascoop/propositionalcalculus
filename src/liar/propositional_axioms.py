@@ -1,133 +1,113 @@
-from .inference import InferenceRule, Proof, AxS, ProofStep
-from .formula import Formula, Var, Binding
+from __future__ import annotations
+from .formula import Formula, Imp, Var
+from .inference import Proof, ProofStep, InferenceRule, AxS, RuleApplication
 
 A, B, C = Var.generate(3)
 
-MP = InferenceRule("MP", [A, A >> B], B)
-
-axioms: list[Formula] = [
-    ~A >> (A >> B),
-    B >> (A >> B),
-    (A >> B) >> ((~A >> B) >> B),
-    (A >> (B >> C)) >> ((A >> B) >> (A >> C)),
-    A >> (B >> (A & B)),
-    (A & B) >> A,
-    (A & B) >> B,
-    A >> (A | B),
-    B >> (A | B),
-    (A >> C) >> ((B >> C) >> ((A | B) >> C)),
-]
-
 
 class PCProof(Proof):
+    MP = InferenceRule("MP", [A, A >> B], B)
+    axioms: list[Formula] = [
+        B >> (A >> B),
+        (A >> (B >> C)) >> ((A >> B) >> (A >> C)),
+        (~B >> ~A) >> ((~B >> A) >> B),
+    ]
+
     def __init__(
         self,
         assumptions: Formula | list[Formula],
         conclusion: Formula,
         steps: list[ProofStep],
     ):
-        super(PCProof, self).__init__({MP}, axioms, assumptions, conclusion, steps)
+        super(PCProof, self).__init__(
+            {PCProof.MP},
+            PCProof.axioms,
+            assumptions,
+            conclusion,
+            steps,
+        )
+
+    @staticmethod
+    def from_proof(proof: Proof) -> PCProof:
+        assert proof.rules == {PCProof.MP}
+        assert proof.axioms == PCProof.axioms
+        return PCProof(proof.assumptions, proof.conclusion, proof.steps)
 
 
-a_implies_a_proof = PCProof(
-    A,
-    A,
-    [
-        AxS(1, {A: A >> A, B: A}),
-        AxS(3, {A: A, B: A >> A, C: A}),
-        MP(1, 2),
-        AxS(1, {A: A, B: A}),
-        MP(4, 3),
-        MP(0, 5),
-    ],
-)
+MP = PCProof.MP
 
 
-elim_double_neg = InferenceRule(
-    "E¬¬",
-    ~~A,
-    A,
-    PCProof(
-        ~~A,
-        A,
-        [
-            AxS(0, {A: ~A, B: A}),
-            MP(0, 1),
-            AxS(1, {A: ~A, B: A}),
-            # TODO: Usar sub-demostración de A >> A
-            AxS(1, {A: A >> A, B: A}),
-            AxS(3, {A: A, B: A >> A, C: A}),
-            MP(4, 5),
-            AxS(1, {A: A, B: A}),
-            MP(7, 6),
-            # final de A >> A
-            AxS(2, {A: A, B: A}),
-            MP(8, 9),
-            MP(2, 10),
-        ],
-    ),
-)
+def assumption_to_implication(proof: PCProof, assumption: Formula) -> PCProof:
+    global MP
+    conclusion_dependencies = map(
+        lambda i: proof.ssssteps[i],
+        proof.step_dependencies(len(proof.assumptions) + len(proof.steps) - 1),
+    )
+    if assumption not in conclusion_dependencies:
+        steps = proof.steps.copy()
+        steps.append(AxS(0, {A: assumption, B: proof.conclusion}))
+        i = len(steps)
+        steps.append(MP(i - 1, i))
+        return PCProof(proof.assumptions.copy(), assumption >> proof.conclusion, steps)
+    elif isinstance(proof.conclusion, Imp) and proof.conclusion.right == assumption:
+        return PCProof(
+            proof.assumptions.copy(),
+            assumption >> proof.conclusion,
+            [AxS(0, {A: proof.conclusion.left, B: assumption})],
+        )
 
+    else:
+        last_step = proof.steps[-1]
+        assert isinstance(last_step, RuleApplication) and last_step.rule == MP
+        i1, i2 = last_step.assumption_indices
+        p1 = assumption_to_implication(
+            PCProof.from_proof(proof.step_subproof(i1)), assumption
+        )
+        p1_conclusion = p1.conclusion
+        assert isinstance(p1_conclusion, Imp)
+        p2 = assumption_to_implication(
+            PCProof.from_proof(proof.step_subproof(i2)), assumption
+        )
+        p2_conclusion = p2.conclusion
+        assert isinstance(p2_conclusion, Imp)
 
-intro_and = InferenceRule(
-    "I∧",
-    [A, B],
-    A & B,
-    PCProof(
-        [A, B],
-        A & B,
-        [
-            AxS(4, {A: A, B: B}),
-            MP(0, 2),
-            MP(1, 3),
-        ],
-    ),
-)
+        assumptions = p1.assumptions.copy()
+        reindex_p2: dict[int, int] = dict()
+        added_assumptions = 0
+        for i_old, assumption in enumerate(p2.assumptions):
+            if assumption not in assumptions:
+                reindex_p2[i_old] = len(assumptions)
+                assumptions.append(assumption)
+                added_assumptions += 1
+            else:
+                reindex_p2[i_old] = len(assumptions) - 1
 
-intro_double_neg = InferenceRule(
-    "I¬¬",
-    A,
-    ~~A,
-    PCProof(
-        A,
-        ~~A,
-        [
-            AxS(2, {A: ~A, B: A >> ~~A}),
-            AxS(0, {A: A, B: ~~A}),
-            MP(2, 1),
-            AxS(1, {A: A, B: ~~A}),
-            MP(4, 3),
-            MP(0, 5),
-        ],
-    ),
-)
+        steps: list[ProofStep] = []
+        for step in p1.steps:
+            match step:
+                case RuleApplication(MP, [j1, j2]):
+                    steps.append(MP(j1 + added_assumptions, j2 + added_assumptions))
+                case f:
+                    steps.append(f)
 
-
-intro_or_left = InferenceRule(
-    "I∧1",
-    A,
-    A | B,
-    PCProof(
-        A,
-        A | B,
-        [
-            AxS(7, {A: A, B: B}),
-            MP(0, 1),
-        ],
-    ),
-)
-
-
-intro_or_right = InferenceRule(
-    "I∧2",
-    A,
-    B | A,
-    PCProof(
-        A,
-        B | A,
-        [
-            AxS(8, {A: B, B: A}),
-            MP(0, 1),
-        ],
-    ),
-)
+        p2_assumptions_n = len(p2.assumptions)
+        p1_steps_n = len(p1.steps)
+        for step in p2.steps:
+            match step:
+                case RuleApplication(_, [j1, j2]):
+                    if j1 < p2_assumptions_n:  # Assumption
+                        k1 = reindex_p2[j1]
+                    else:
+                        k1 = j1 + added_assumptions + p1_steps_n
+                    if j2 < p2_assumptions_n:  # Assumption
+                        k2 = reindex_p2[j2]
+                    else:
+                        k2 = j2 + added_assumptions + p1_steps_n
+                    steps.append(MP(k1, k2))
+                case f:
+                    steps.append(f)
+        steps.append(
+            AxS(2, {A: assumption, B: p1_conclusion.right, C: proof.conclusion})
+        )
+        # steps.append(PCProof.MP())
+        return PCProof(assumptions, proof.conclusion, steps)
