@@ -1,24 +1,15 @@
-from liar.inference import (
-    InferenceRule,
-    Proof,
-    ProofStepApplyRule,
-    ProofStepSpecializeAxiom,
-    Binding
-)
-from .formula import Formula, Var
-
+from liar.inference import InferenceRule
+from .proof import Proof, AxiomSpecialization
+from .formula import Formula, Var, Binding
 
 A, B, C = Var.generate(3)
 
+MP = InferenceRule("MP", [A, A >> B], B)
 
-modus_ponens = InferenceRule("MP", (A, A >> B), B)
 
+def Ax(axiom_index: int, binding: Binding):
+    return AxiomSpecialization(axiom_index, binding)
 
-def MP(*indices: int): 
-    return ProofStepApplyRule(modus_ponens, indices)
-
-def Ax(axiom_index: int, binding: Binding): 
-    return ProofStepSpecializeAxiom(axiom_index, binding)
 
 axioms: list[Formula] = [
     ~A >> (A >> B),
@@ -44,16 +35,9 @@ a_implies_a_proof = Proof(
         MP(1, 2),
         Ax(1, {A: A, B: A}),
         MP(4, 3),
+        MP(0, 5),
     ],
 )
-
-
-def pad_steps(
-    steps: list[ProofStepApplyRule | ProofStepSpecializeAxiom],
-    pad_assumptions: int = 0,
-    pad_axioms: int = 0,
-) -> list[ProofStepApplyRule | ProofStepSpecializeAxiom]:
-    raise NotImplementedError()
 
 
 elim_double_neg = InferenceRule(
@@ -85,11 +69,11 @@ elim_double_neg = InferenceRule(
 
 intro_and = InferenceRule(
     "I∧",
-    (A, B),
+    [A, B],
     A & B,
     Proof(
         axioms,
-        (A, B),
+        [A, B],
         A & B,
         [
             Ax(4, {A: A, B: B}),

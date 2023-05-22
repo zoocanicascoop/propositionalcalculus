@@ -1,10 +1,10 @@
 from __future__ import annotations
 from functools import cached_property
 
-from .rule import pattern_match
-from .formula import Formula, Const, Var
 
-Binding = dict[Var, Formula]
+from .rule import pattern_match
+from .formula import Binding, Formula, Const, Var
+from .proof import Proof, RuleApplication
 
 
 def merge_bindings(a: Binding, b: Binding) -> Binding | None:
@@ -18,13 +18,13 @@ class InferenceRule:
     def __init__(
         self,
         name: str,
-        assumptions: Formula | tuple[Formula, ...],
+        assumptions: Formula | list[Formula],
         conclusion: Formula,
         proof: Proof | None = None,
     ) -> None:
         self.name = name
         self.assumptions = (
-            (assumptions,) if isinstance(assumptions, Formula) else assumptions
+            [assumptions] if isinstance(assumptions, Formula) else assumptions
         )
         self.conclusion = conclusion
         if proof is not None:
@@ -34,7 +34,7 @@ class InferenceRule:
             assert (
                 proof.conclusion == self.conclusion
             ), "The InferenceRule proof must have the same conclusion of the rule"
-            proof.check()
+            proof.check_and_state()
         self.proof = proof
 
     def __repr__(self) -> str:
@@ -101,11 +101,11 @@ class InferenceRule:
                 return None
         return self.conclusion.subs(global_binding)
 
-    def __call__(self, *assumption_indices: int) -> ProofStepApplyRule:
-        return ProofStepApplyRule(self, assumption_indices)
+    def __call__(self, *assumption_indices: int) -> RuleApplication:
+        return RuleApplication(self, assumption_indices)
 
     def specialize(self, binding: dict[Var, Formula]) -> InferenceRule:
-        assumptions = tuple(map(lambda a: a.subs(binding), self.assumptions))
+        assumptions = list(map(lambda a: a.subs(binding), self.assumptions))
         conclusion = self.conclusion.subs(binding)
         return InferenceRule(self.name + " specialized", assumptions, conclusion)
 
@@ -125,93 +125,3 @@ class InferenceRule:
             if global_binding is None:
                 return False
         return True
-
-
-class ProofStepApplyRule:
-    def __init__(
-        self, rule: InferenceRule, assumption_indices: tuple[int, ...]
-    ) -> None:
-        assert rule.arity == len(
-            assumption_indices
-        ), f"La cantidad de premisas debe coincidir con la aridad de la regla."
-        self.rule = rule
-        self.assumption_indices = assumption_indices
-
-    def apply(self, current_assumptions: list[Formula]) -> Formula | None:
-        for i in self.assumption_indices:
-            if i + 1 > len(current_assumptions):
-                return None
-        return self.rule.apply(
-            tuple([current_assumptions[index] for index in self.assumption_indices])
-        )
-
-    def pad(self, n: int) -> ProofStepApplyRule:
-        return ProofStepApplyRule(
-            self.rule, tuple(map(lambda v: v + n, self.assumption_indices))
-        )
-
-
-class ProofStepSpecializeAxiom:
-    def __init__(self, axiom_index: int, binding: Binding) -> None:
-        self.axiom_index = axiom_index
-        self.binding = binding
-
-    def apply(self, axioms: list[Formula]) -> Formula:
-        return axioms[self.axiom_index].subs(self.binding)
-
-    def pad(self, n: int) -> ProofStepSpecializeAxiom:
-        return ProofStepSpecializeAxiom(self.axiom_index + n, self.binding)
-
-
-class Proof:
-    def __init__(
-        self,
-        axioms: list[Formula],
-        assumptions: Formula | tuple[Formula, ...],
-        conclusion: Formula,
-        steps: list[ProofStepApplyRule | ProofStepSpecializeAxiom],
-    ) -> None:
-        assert len(steps) > 0, "La cantidad de pasos debe ser positiva"
-        self.axioms = axioms
-        self.assumptions = (
-            (assumptions,) if isinstance(assumptions, Formula) else assumptions
-        )
-        self.conclusion = conclusion
-        self.steps = steps
-
-    def check(self, verbose=False) -> bool:
-        info = lambda s: print(s) if verbose else None
-        info("Axioms:")
-        info("\n".join([f"Ax {i}. {f}" for i, f in enumerate(self.axioms)]))
-        info("Assumptions:")
-        info("\n".join([f"{i}. {f}" for i, f in enumerate(self.assumptions)]))
-        info("Steps:")
-        k = len(self.assumptions)
-        state = list(self.assumptions)
-        for i, step in enumerate(self.steps):
-            match step:
-                case ProofStepSpecializeAxiom():
-                    new_f = step.apply(self.axioms)
-                    state.append(new_f)
-                    if verbose:
-                        info(f"{i+k}. {new_f} [Ax {step.axiom_index}]")
-                case ProofStepApplyRule():
-                    new_f = step.apply(state)
-                    if new_f is None:
-                        info(
-                            f"{i+k}. Invalid application of {step.rule.name} to formulas {step.assumption_indices}"
-                        )
-                        return False
-                    else:
-                        info(
-                            f"{i+k}. {new_f} [{step.rule.name} {step.assumption_indices}]"
-                        )
-                        state.append(new_f)
-        finished = state[-1] == self.conclusion
-        if verbose:
-            info(
-                f"Proof finished succesfully!"
-                if finished
-                else f"Unfinished proof! Goal {self.conclusion}"
-            )
-        return finished
