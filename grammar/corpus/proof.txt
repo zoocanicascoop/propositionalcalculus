@@ -1,0 +1,37 @@
+================================================================================
+Proof
+================================================================================
+Rules from PC
+Prove B from [A, ~A] {
+ 2. A: 1 {A: A, B: B}
+ 3. R: MP 1 2
+ sorry
+}
+--------------------------------------------------------------------------------
+
+(file
+  (rule_import)
+  (proof
+    (formula
+      (var))
+    (formula
+      (var))
+    (formula
+      (neg
+        (var)))
+    (axiom_specialization
+      (num)
+      (binding
+        (var_binding
+          (var)
+          (formula
+            (var)))
+        (var_binding
+          (var)
+          (formula
+            (var)))))
+    (rule_application
+      (rule_id)
+      (num)
+      (num))
+    (sorry)))

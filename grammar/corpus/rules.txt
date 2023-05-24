@@ -1,0 +1,29 @@
+================================================================================
+Rule declaration
+================================================================================
+Rules:
+
+AND1: A ∧ B ⊢ A
+MP: [ A, A → B ] ⊢ B
+--------------------------------------------------------------------------------
+
+(file
+  (rules
+    (rule_declaration
+      (rule_id)
+      (formula
+        (and
+          (var)
+          (var)))
+      (formula
+        (var)))
+    (rule_declaration
+      (rule_id)
+      (formula
+        (var))
+      (formula
+        (imp
+          (var)
+          (var)))
+      (formula
+        (var)))))
