@@ -114,3 +114,4 @@ cython_debug/
 *.pdf
 pruebas.py
 .flakeheaven_cache
+result

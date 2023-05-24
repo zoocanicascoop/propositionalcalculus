@@ -17,12 +17,18 @@
       in
       {
         packages = {
-          propositionalcalculus = mkPoetryApplication { projectDir = self; };
+          propositionalcalculus = mkPoetryApplication { 
+            projectDir = self; 
+            buildInputs = [ pkgs.graphviz ];
+          };
           default = self.packages.${system}.propositionalcalculus;
         };
 
         devShells.default = pkgs.mkShell {
-          packages = [ poetry2nix.packages.${system}.poetry ];
+          packages = [ 
+            poetry2nix.packages.${system}.poetry 
+            self.packages.${system}.propositionalcalculus.dependencyEnv
+          ];
         };
       });
 }
