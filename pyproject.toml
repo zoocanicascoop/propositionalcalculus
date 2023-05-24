@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "liar"
+name = "propositionalcalculus"
 version = "0.1.0"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = []
 readme = "README.md"
 
 [tool.poetry.dependencies]
@@ -14,7 +14,9 @@ black = "^23.3.0"
 pytest = "^7.3.1"
 pytest-cov = "^4.0.0"
 pre-commit = "^3.3.1"
-flakeheaven = "^3.3.0"
+
+[tool.poetry.scripts]
+propositionalcalculus = 'propositionalcalculus.__main__:main'
 
 [build-system]
 requires = ["poetry-core"]
