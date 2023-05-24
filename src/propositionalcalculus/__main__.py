@@ -68,9 +68,9 @@ def parse_formula(node: Node) -> Formula:
             assert f1 is not None and f2 is not None
             return Imp(parse_formula(f1), parse_formula(f2))
         case "(":
-            raise NotImplementedError
+            raise NotImplementedError()
         case ")":
-            raise NotImplementedError
+            raise NotImplementedError()
         case _:
             raise ValueError(f"Unreachable: {node.type = }")
 
@@ -111,7 +111,7 @@ def file_parser(fn: Callable[[list[tuple[Node, str]]], Any]):
 @file_parser
 def parse_formulas(captures: list[tuple[Node, str]]):
     return map(
-        lambda e: parse_formula(e[0]), filter(lambda e: e[1] == "formula", captures)
+        lambda e: (e[0], parse_formula(e[0])), filter(lambda e: e[1] == "formula", captures)
     )
 
 
@@ -125,10 +125,10 @@ def main():
     parser = Parser()
     parser.set_language(TSLANG)
 
-    for f in parse_formulas(parser, "../../grammar/examples/example.txt"):
-        print(f)
-    # for rule in parse_rules(parser, "../../grammar/examples/MP.rule"):
-    #     print(rule)
+    for node, f in parse_formulas(parser, "../../grammar/examples/example.txt"):
+        print(f'"{node.text.decode()}"  =>  {f}')
+    for rule in parse_rules(parser, "../../grammar/examples/MP.rule"):
+        print(rule)
 
 
 if __name__ == "__main__":
