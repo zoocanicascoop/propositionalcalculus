@@ -1,0 +1,7 @@
+Examples:
+
+A
+B
+T
+F
+A and B or F imp A or B

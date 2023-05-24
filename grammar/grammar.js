@@ -114,9 +114,9 @@ module.exports = grammar({
 
     neg: $ => prec.right(4, seq(choice('¬', '~', 'neg'), $._formula)),
 
-    imp: $ => prec.right(3, seq($._formula, choice("→", ">>", "imp"), $._formula)),
-    and: $ => prec.left(2,  seq($._formula, choice("∧", "&",  "and"), $._formula)),
-    or:  $ => prec.left(1,  seq($._formula, choice("∨", "|",  "or" ), $._formula)),
+    imp: $ => prec.right(3, seq(field("left", $._formula), choice("→", ">>", "imp"), field("right", $._formula))),
+    and: $ => prec.left(2,  seq(field("left", $._formula), choice("∧", "&",  "and"), field("right", $._formula))),
+    or:  $ => prec.left(1,  seq(field("left", $._formula), choice("∨", "|",  "or" ), field("right", $._formula))),
 
 
 
