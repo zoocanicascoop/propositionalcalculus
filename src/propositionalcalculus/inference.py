@@ -2,7 +2,7 @@ from __future__ import annotations
 from functools import cached_property, reduce
 
 
-from .rule import pattern_match
+from .rule import Rule, pattern_match
 from .formula import Binding, Formula, Const, Var, merge_bindings
 
 
@@ -132,6 +132,9 @@ class Proof:
         if isinstance(assumptions, Formula):
             assumptions = [assumptions]
         self.assumptions = assumptions
+        assert len(self.assumptions) == len(
+            set(self.assumptions)
+        ), "There cannot be repeated assumptions"
         self.conclusion = conclusion
         self.steps = steps
         for step in self.steps:
@@ -218,6 +221,92 @@ class Proof:
                 else f"Unfinished proof! Goal {self.conclusion}"
             )
         return state if finished else None
+
+    def superflous_assumption(self, assumption: Formula) -> bool:
+        if assumption not in self.assumptions:
+            return True
+        elif self.assumptions.index(assumption) in self.step_dependencies(
+            len(self.ssssteps) - 1
+        ):
+            return False
+        else:
+            return True
+
+    def delete_superflous_assumptions(self) -> Proof:
+        return self.step_subproof(len(self.ssssteps) - 1)
+
+    # def delete_superflous_assumption(self, assumption: Formula) -> Proof:
+    #     assert self.superflous_assumption(assumption), "The assumption must be superflous"
+    #     if assumption not in self.assumptions:
+    #         return self
+    #     assumption_index = self.assumptions.index(assumption)
+    #     assumptions = self.assumptions.copy()
+    #     assumptions.remove(assumption)
+    #     steps: list[ProofStep] = []
+    #     for step in self.steps:
+    #         match step:
+    #             case RuleApplication(rule, indexes):
+    #                 new_indexes = [
+    #                     i - 1
+    #                     if i > assumption_index
+    #                     else i
+    #                     for i in indexes
+    #                 ]
+    #                 steps.append(RuleApplication(rule, new_indexes))
+    #             case _:
+    #                 steps.append(step)
+    #     return Proof(self.rules, self.axioms, assumptions, self.conclusion, steps)
+
+
+def proof_mixer(proof1: Proof, proof2: Proof) -> tuple[list[Formula], list[ProofStep]]:
+    assert (
+        proof1.axioms == proof2.axioms and proof1.rules == proof2.rules
+    ), "The proofs axioms and rules must match"
+    # Mixing of proof1 and proof2 assumptions, starting with proof1 assumptions
+    # and adding proof2 assumptions not in proof1.
+    assumptions = proof1.assumptions.copy()
+    reindex_assumptions_proof2: dict[int, int] = dict()
+    ass_not_in_proof1 = 0
+    for i_old, assumption in enumerate(proof2.assumptions):
+        if assumption not in assumptions:
+            reindex_assumptions_proof2[i_old] = len(assumptions)
+            assumptions.append(assumption)
+            ass_not_in_proof1 += 1
+        else:
+            reindex_assumptions_proof2[i_old] = assumptions.index(assumption)
+
+    # Mixing proof steps
+    steps: list[ProofStep] = []
+    # First we add proof1 steps, reindexing the rule applications.
+    proof1_assumptions_number = len(proof1.assumptions)
+    for step in proof1.steps:
+        match step:
+            case RuleApplication(rule, indexes):
+                new_indexes = [
+                    i if i < proof1_assumptions_number else i + ass_not_in_proof1
+                    for i in indexes
+                ]
+                steps.append(RuleApplication(rule, new_indexes))
+            case _:
+                steps.append(step)
+
+    # Then we add proof2 steps
+    proof2_assumptions_number = len(proof2.assumptions)
+    proof2_padding = len(proof1.steps) + (len(assumptions) - len(proof2.assumptions))
+    for step in proof2.steps:
+        match step:
+            case RuleApplication(rule, indexes):
+                new_indexes = [
+                    reindex_assumptions_proof2[i]
+                    if i < proof2_assumptions_number
+                    else i + proof2_padding
+                    for i in indexes
+                ]
+                steps.append(RuleApplication(rule, new_indexes))
+            case _:
+                steps.append(step)
+
+    return assumptions, steps
 
 
 class AxiomSpecialization:
