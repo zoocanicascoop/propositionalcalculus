@@ -7,6 +7,13 @@ from random import choice, randint, sample
 Binding = dict["Var", "Formula"]
 
 
+def merge_bindings(a: Binding, b: Binding) -> Binding | None:
+    for key in a.keys():
+        if key in b and a[key] != b[key]:
+            return None
+    return a | b
+
+
 class OrderType(Enum):
     INORDER = 0
     BREADTH_FIRST = 1
@@ -23,28 +30,6 @@ class Formula:
     @property
     def str_polish(self) -> str:
         raise NotImplementedError()
-
-    @staticmethod
-    def parse_symbol(symbol: str):
-        """Parses a single symbol and returns the correspondent Var, Const or Operator."""
-        match symbol:
-            case "¬":
-                return Neg
-            case "∧":
-                return And
-            case "∨":
-                return Or
-            case "→":
-                return Imp
-            case "T":
-                return Const.TRUE
-            case "F":
-                return Const.FALSE
-            case _:
-                if symbol in Var.var_names:
-                    return Var
-                else:
-                    raise ValueError("invalid symbol")
 
     @staticmethod
     def parse_polish(string: str, stack: list[Formula] = []) -> Formula | None:
