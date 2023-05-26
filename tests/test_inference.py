@@ -1,7 +1,7 @@
-from liar.formula import Var
+from propositionalcalculus.formula import Var
 import pytest
-from liar.inference import InferenceRule
-from liar.natural_deduction import rules
+from propositionalcalculus.inference import InferenceRule
+from propositionalcalculus.natural_deduction import rules
 
 
 def test_inference_is_sound():

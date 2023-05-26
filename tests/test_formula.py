@@ -1,5 +1,5 @@
 import pytest
-from liar.formula import (
+from propositionalcalculus.formula import (
     And,
     BinaryOperator,
     Const,
@@ -10,7 +10,7 @@ from liar.formula import (
     UnaryOperator,
     Var,
 )
-from liar.table import is_tauto
+from propositionalcalculus.table import is_tauto
 
 
 @pytest.fixture(scope="function")
