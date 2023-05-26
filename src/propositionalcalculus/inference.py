@@ -2,22 +2,28 @@ from __future__ import annotations
 from functools import cached_property, reduce
 
 
-from .rule import Rule, pattern_match
-from .formula import Binding, Formula, Const, Var, merge_bindings
+from .rule import pattern_match
+from .formula import (
+    Binding,
+    Formula,
+    Const,
+    Formulas,
+    Var,
+    formulas_to_list,
+    merge_bindings,
+)
 
 
 class InferenceRule:
     def __init__(
         self,
         name: str,
-        assumptions: Formula | list[Formula],
+        assumptions: Formulas,
         conclusion: Formula,
         proof: Proof | None = None,
     ) -> None:
         self.name = name
-        self.assumptions = (
-            [assumptions] if isinstance(assumptions, Formula) else assumptions
-        )
+        self.assumptions = formulas_to_list(assumptions)
         self.conclusion = conclusion
         if proof is not None:
             assert (
@@ -64,14 +70,14 @@ class InferenceRule:
 
     def apply(
         self,
-        assumptions: Formula | list[Formula],
+        assumptions: Formulas,
         conclusion_binding: Binding | None = None,
     ) -> Formula | None:
         """
         TODO: Devolver mensajes de error según el tipo de fallo de aplicación.
         """
 
-        assumptions = [assumptions] if isinstance(assumptions, Formula) else assumptions
+        assumptions = formulas_to_list(assumptions)
 
         if len(self.assumptions) != len(assumptions):
             return None
@@ -122,16 +128,14 @@ class Proof:
         self,
         rules: set[InferenceRule],
         axioms: list[Formula],
-        assumptions: Formula | list[Formula],
+        assumptions: Formulas,
         conclusion: Formula,
         steps: list[ProofStep],
     ) -> None:
         assert len(steps) > 0, "La cantidad de pasos debe ser positiva"
         self.rules = rules
         self.axioms = axioms
-        if isinstance(assumptions, Formula):
-            assumptions = [assumptions]
-        self.assumptions = assumptions
+        self.assumptions = formulas_to_list(assumptions)
         assert len(self.assumptions) == len(
             set(self.assumptions)
         ), "There cannot be repeated assumptions"

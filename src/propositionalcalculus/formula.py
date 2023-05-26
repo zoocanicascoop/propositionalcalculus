@@ -530,6 +530,13 @@ class Formula:
         return True
 
 
+Formulas = Formula | list[Formula]
+
+
+def formulas_to_list(fs: Formulas) -> list[Formula]:
+    return [fs] if isinstance(fs, Formula) else fs
+
+
 class UnaryOperator(Formula):
     symbol: str
     __match_args__ = ("f",)
