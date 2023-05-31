@@ -1,6 +1,13 @@
-from propositionalcalculus.formula import Formula, Formulas, Var
+from random import choice, randint, randrange
+from propositionalcalculus.formula import Formula, Var
+from propositionalcalculus.hilbert_system import MP, PCProof
 import pytest
-from propositionalcalculus.inference import InferenceRule
+from propositionalcalculus.inference import (
+    AxiomSpecialization,
+    InferenceRule,
+    Proof,
+    RuleApplication,
+)
 from propositionalcalculus.natural_deduction import rules
 
 
@@ -61,37 +68,69 @@ def test_inference_rule_specialize_false():
 
 
 def test_inference_rule_apply():
-    A, B = Var.generate(2)
-    MP = InferenceRule("MP", [A >> B, A], B)
     f1 = Formula.random(5, 10)
     f2 = Formula.random(5, 10)
-    assert MP.apply([f1 >> f2, f1]) == f2
+    assert MP.apply([f1, f1 >> f2]) == f2
 
 
 def test_inference_rule_apply_invalid_assumptions_len():
-    A, B = Var.generate(2)
-    MP = InferenceRule("MP", [A >> B, A], B)
     f1 = Formula.random(5, 10)
     assert MP.apply([f1]) == None
 
 
-def test_inference_rule_apply_conclusion_binding():
+@pytest.fixture
+def absurd_rule():
     A, B = Var.generate(2)
-    MP = InferenceRule("MP", [A, ~A], B)
+    return InferenceRule("absurd", [A, ~A], B)
+
+
+def test_inference_rule_apply_conclusion_binding(absurd_rule):
+    _, B = Var.generate(2)
     f1 = Formula.random(5, 10)
     f2 = Formula.random(5, 10)
-    assert MP.apply([f1, ~f1], {B: f2}) == f2
+    assert absurd_rule.apply([f1, ~f1], {B: f2}) == f2
 
 
-def test_inference_rule_apply_invalid_conclusion_binding():
-    A, B = Var.generate(2)
-    MP = InferenceRule("MP", [A, ~A], B)
+def test_inference_rule_apply_invalid_conclusion_binding(absurd_rule):
     f1 = Formula.random(5, 10)
-    assert MP.apply([f1, ~f1]) == None
+    assert absurd_rule.apply([f1, ~f1]) == None
 
 
-def test_inference_rule_apply_invalid_application_pattern():
-    A, B = Var.generate(2)
-    MP = InferenceRule("MP", [A, ~A], B)
+def test_inference_rule_apply_invalid_application_pattern(absurd_rule):
+    _, B = Var.generate(2)
     f1 = Formula.random(5, 10)
-    assert MP.apply([f1, f1], {B: B}) == None
+    assert absurd_rule.apply([f1, f1], {B: B}) == None
+
+
+def test_axiom_specialization_apply():
+    axioms = [Formula.random(5, 10)]
+    binding = {v: Formula.random(3, 5) for v in axioms[0].vars}
+    AxS = AxiomSpecialization(0, binding)
+    assert isinstance(AxS.apply(axioms), Formula)
+
+
+def test_rule_application_init():
+    assert isinstance(MP(0, 1), RuleApplication)
+
+
+def test_rule_application_invalid_init(absurd_rule):
+    with pytest.raises(AssertionError):
+        absurd_rule(0, 1, 2, 3)
+
+
+def test_rule_application_apply():
+    f1 = Formula.random(3, 5)
+    f2 = Formula.random(2, 5)
+    assumptions = [f1, f1 >> f2]
+    assert RuleApplication(MP, [0, 1]).apply(assumptions) == f2
+
+
+def test_rule_application_invalid_apply():
+    f1 = Formula.random(5, 10)
+    f2 = Formula.random(5, 10)
+    assumptions = [f2, f1 >> f2]
+    assert MP(10, 11).apply(assumptions) == None
+
+
+def test_proof_check_and_state_valid(valid_proof: Proof):
+    assert valid_proof.check_and_state() is not None
