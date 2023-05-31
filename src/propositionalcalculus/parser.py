@@ -5,6 +5,8 @@ from typing import Any
 
 from tree_sitter import Language, Node, Parser
 
+from propositionalcalculus.inference import InferenceRule
+
 # from propositionalcalculus.inference import InferenceRule
 
 from .formula import (
@@ -81,7 +83,7 @@ def parse_rule(node: Node):
     conclusion = node.child_by_field_name("conclusion")
     assert conclusion is not None
     conclusion = parse_formula(conclusion)
-    return (id, assumptions, conclusion)
+    return InferenceRule(id, assumptions, conclusion)
 
 
 def file_parser(fn: Callable[[list[tuple[Node, str]]], Any]):
@@ -101,7 +103,7 @@ def file_parser(fn: Callable[[list[tuple[Node, str]]], Any]):
 @file_parser
 def parse_formulas(captures: list[tuple[Node, str]]):
     return map(
-        lambda e: (e[0], parse_formula(e[0])),
+        lambda e: parse_formula(e[0]),
         filter(lambda e: e[1] == "formula", captures),
     )
 
