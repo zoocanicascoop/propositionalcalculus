@@ -88,7 +88,6 @@ def assumption_to_implication(proof: PCProof, assumption: Formula) -> PCProof:
             last_step = proof.steps[-1]
             assert isinstance(last_step, RuleApplication) and last_step.rule == MP
             i1, i2 = last_step.assumption_indices
-            print(i1, i2)
             # TODO: Aqui i1 i2 pueden ser indices correspondientes a
             # assumptions.
             # Casos que hay que tener en cuenta:
@@ -124,7 +123,6 @@ def assumption_to_implication_old(
         proof.step_dependencies(len(proof.assumptions) + len(proof.steps) - 1),
     )
     if assumption not in conclusion_dependencies:
-        print("Case 1")
         assumptions = proof.assumptions.copy()
         if assumption in assumptions:
             assumption_index = assumptions.index(assumption)
@@ -147,12 +145,10 @@ def assumption_to_implication_old(
         steps.append(MP(i - 1, i))
         p = PCProof(assumptions, assumption >> proof.conclusion, steps)
         if p.check_and_state() is None:
-            print(p)
             p.check_and_state(True)
             assert False
         return p
     elif isinstance(proof.conclusion, Imp) and proof.conclusion.right == assumption:
-        print("Case 2")
         assumptions = proof.assumptions.copy()
         assumptions.remove(assumption)
 
@@ -165,7 +161,6 @@ def assumption_to_implication_old(
         return p
 
     else:
-        print("Case 3")
         last_step = proof.steps[-1]
         assert isinstance(last_step, RuleApplication) and last_step.rule == MP
         i1, i2 = last_step.assumption_indices
