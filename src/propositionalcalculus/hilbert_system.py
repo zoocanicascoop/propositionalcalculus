@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Literal
-from .formula import Formula, Imp, Var
+from .formula import Formula, Formulas, Imp, Var
 from .inference import (
     Proof,
     ProofStep,
@@ -23,7 +23,7 @@ class PCProof(Proof):
 
     def __init__(
         self,
-        assumptions: Formula | list[Formula],
+        assumptions: Formulas,
         conclusion: Formula,
         steps: list[ProofStep],
     ):
