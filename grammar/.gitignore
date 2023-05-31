@@ -3,3 +3,5 @@ bindings
 node_modules
 src
 build
+
+*.o
