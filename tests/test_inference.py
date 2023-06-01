@@ -7,6 +7,7 @@ from propositionalcalculus.inference import (
     InferenceRule,
     Proof,
     RuleApplication,
+    proof_mixer,
 )
 from propositionalcalculus.natural_deduction import rules
 
@@ -134,3 +135,30 @@ def test_rule_application_invalid_apply():
 
 def test_proof_check_and_state_valid(valid_proof: Proof):
     assert valid_proof.check_and_state() is not None
+
+
+def test_proof_step_subproof_valid(valid_proof: Proof):
+    for i in range(len(valid_proof.steps)):
+        assert valid_proof.step_subproof(i).check_and_state() is not None
+
+
+def test_proof_step_subproof_valid_without_superflous_assumptions(valid_proof: Proof):
+    for i in range(len(valid_proof.steps)):
+        assert valid_proof.step_subproof(i, True).check_and_state() is not None
+
+
+def test_proof_mixer_steps_number(valid_proof: Proof, valid_proof_: Proof):
+    _, steps = proof_mixer(valid_proof, valid_proof_)
+    assert len(valid_proof.steps) + len(valid_proof_.steps) == len(steps)
+
+
+def test_proof_mixer_proves_second_conclusion(valid_proof: Proof, valid_proof_: Proof):
+    assumptions, steps = proof_mixer(valid_proof, valid_proof_)
+    proof = Proof(
+        valid_proof.rules,
+        valid_proof.axioms,
+        assumptions,
+        valid_proof_.conclusion,
+        steps,
+    )
+    assert proof.check_and_state() is not None

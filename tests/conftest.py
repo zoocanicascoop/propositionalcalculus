@@ -12,9 +12,13 @@ def pytest_generate_tests(metafunc):
         count = int(metafunc.config.option.repeat)
     else:
         count = 100
+
     if "random_formula" in metafunc.fixturenames:
         metafunc.fixturenames.append("tmp_ct")
         metafunc.parametrize("tmp_ct", range(count))
 
     if "valid_proof" in metafunc.fixturenames:
         metafunc.parametrize("valid_proof", valid_proofs)
+
+    if "valid_proof_" in metafunc.fixturenames:
+        metafunc.parametrize("valid_proof_", valid_proofs)
