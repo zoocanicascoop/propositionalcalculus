@@ -66,7 +66,7 @@ def assumption_to_implication(proof: PCProof, assumption: Formula) -> PCProof:
         case 1:
             proof = PCProof.from_proof(proof.delete_superflous_assumptions())
             proof.steps.append(AxS(0, {A: assumption, B: proof.conclusion}))
-            i = len(proof.ssssteps)
+            i = len(proof.steps)
             proof.steps.append(MP(i - 2, i - 1))
             proof.conclusion = assumption >> proof.conclusion
             return proof
@@ -108,7 +108,7 @@ def assumption_to_implication(proof: PCProof, assumption: Formula) -> PCProof:
             steps.append(
                 AxS(1, {A: assumption, B: p1.conclusion.right, C: proof.conclusion})
             )
-            proof_len = len(assumptions) + len(steps)
+            proof_len = len(steps)
             steps.append(PCProof.MP(proof_len - 2, proof_len - 1))
-            steps.append(PCProof.MP(len(assumptions) + len(p1.steps) - 1, proof_len))
+            steps.append(PCProof.MP(len(p1.steps) - 1, proof_len))
             return PCProof(assumptions, assumption >> proof.conclusion, steps)
