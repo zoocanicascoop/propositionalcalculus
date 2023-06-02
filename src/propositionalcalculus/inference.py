@@ -2,6 +2,10 @@ from __future__ import annotations
 from functools import cached_property, reduce
 from copy import copy
 
+from rich.table import Table
+from rich.padding import Padding
+from rich.panel import Panel
+
 
 from .rule import pattern_match
 from .formula import (
@@ -171,8 +175,8 @@ class Proof:
     def step_subproof(
         self, index: int, delete_superflous_assumptions: bool = False
     ) -> Proof:
-        state = self.check_and_state()
-        assert state is not None
+        new_conclusion = self.state[index]
+        assert new_conclusion is not None
         steps_indices = list(self.step_dependencies(index)) + [index]
         steps_indices.sort()
         if delete_superflous_assumptions:
@@ -202,55 +206,70 @@ class Proof:
             self.rules.copy(),
             self.axioms.copy(),
             assumptions,
-            state[index],
+            new_conclusion,
             steps,
         )
 
-    def check_and_state(self, verbose=False) -> list[Formula] | None:
-        info = lambda s: print(s) if verbose else None
-        info("Axioms:")
-        info("\n".join([f"Ax {i}. {f}" for i, f in enumerate(self.axioms)]))
-        info("Assumptions:")
-        info("\n".join([f"{i}. {f}" for i, f in enumerate(self.assumptions)]))
-        info("Steps:")
+    @cached_property
+    def state(self) -> list[Formula | None]:
         state = []
-        for i, step in enumerate(self.steps):
+        for step in self.steps:
             match step:
                 case AssumptionInclusion():
-                    new_f = step.apply(self.assumptions)
-                    state.append(new_f)
+                    state.append(step.apply(self.assumptions))
                 case AxiomSpecialization():
-                    new_f = step.apply(self.axioms)
-                    state.append(new_f)
+                    state.append(step.apply(self.axioms))
                 case RuleApplication():
-                    new_f = step.apply(state)
-                    if new_f is None:
-                        info(
-                            f"{i}. Invalid application of {step.rule._name} to formulas {step.assumption_indices}"
-                        )
-                        return None
-                    else:
-                        state.append(new_f)
-            info(f"{i}. {new_f} [{step}]")
-        finished = state[-1] == self.conclusion
-        if verbose:
-            info(
-                f"Proof finished succesfully!"
-                if finished
-                else f"Unfinished proof! Goal {self.conclusion}"
-            )
-        return state if finished else None
+                    state.append(step.apply(state))
+            if state[-1] is None:
+                break
+        return state
+
+    @cached_property
+    def check(self) -> bool:
+        return self.state[-1] == self.conclusion
+
+    def display(self):
+        t = Table(show_header=False, box=None)
+        t.add_column("Section", vertical="middle", style="bold")
+        t.add_column("Content")
+        t.add_row(
+            "Assumptions",
+            "\n".join(map(lambda a: f"{a[0]}. {a[1]}", enumerate(self.assumptions))),
+        )
+        t.add_row("Conclusion", Padding(str(self.conclusion), (1, 0)))
+        steps_t = Table.grid("n", "state", "step")
+        error = False
+        for i, (step, state) in enumerate(zip(self.steps, self.state)):
+            if state is not None:
+                steps_t.add_row(f"{i}. ", str(state), f" [italic]{step}")
+            else:
+                steps_t.add_row(
+                    f"{i}. ", "[bright_red]error", f" [italic bright_red]{step}"
+                )
+                error = True
+        t.add_row("Steps", steps_t)
+        if self.state[-1] != self.conclusion:
+            t.add_row("", "\nUnfinished proof!")
+            error = True
+        return Panel(
+            Padding(t, 1),
+            title=f"[bold {'red' if error else 'green'}]{repr(self)}",
+            expand=False,
+        )
 
     @cached_property
     def used_assumptions(self) -> list[Formula]:
-        return [
-            step.apply(self.assumptions)
-            for step in self.steps
-            if isinstance(step, AssumptionInclusion)
-        ]
+        result = []
+        for step in self.steps:
+            if isinstance(step, AssumptionInclusion):
+                ass = step.apply(self.assumptions)
+                if ass is not None:
+                    result.append(ass)
+        return result
 
     def superflous_assumption(self, assumption: Formula) -> bool:
-        return assumption in self.used_assumptions
+        return assumption not in self.used_assumptions
 
     def delete_superflous_assumptions(self) -> Proof:
         return self.step_subproof(len(self.steps) - 1, True)
@@ -301,8 +320,9 @@ class AssumptionInclusion:
     def __repr__(self):
         return f"Ass {self.index}"
 
-    def apply(self, assumptions: list[Formula]) -> Formula:
-        return assumptions[self.index]
+    def apply(self, assumptions: list[Formula]) -> Formula | None:
+        if 0 <= self.index < len(assumptions):
+            return assumptions[self.index]
 
 
 Ass = AssumptionInclusion
@@ -318,8 +338,11 @@ class AxiomSpecialization:
     def __repr__(self):
         return f"Ax {self.axiom_index} {self.binding}"
 
-    def apply(self, axioms: list[Formula]) -> Formula:
-        return axioms[self.axiom_index].subs(self.binding)
+    def apply(self, axioms: list[Formula]) -> Formula | None:
+        if 0 <= self.axiom_index < len(axioms):
+            axiom = axioms[self.axiom_index]
+            if set(self.binding.keys()) == axiom.vars:
+                return axiom.subs(self.binding)
 
 
 AxS = AxiomSpecialization
