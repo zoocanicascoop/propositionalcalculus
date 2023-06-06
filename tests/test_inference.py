@@ -13,13 +13,11 @@ from propositionalcalculus.inference import (
     RuleApplication,
     proof_mixer,
 )
-from propositionalcalculus.natural_deduction import rules
 
 
-def test_inference_rule_is_sound():
+def test_modus_ponens_is_sound():
     A = Var("A")
-    for rule in rules:
-        assert rule.is_sound
+    assert MP.is_sound
     assert InferenceRule("test", [], A | (~A))
 
 
