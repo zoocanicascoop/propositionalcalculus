@@ -1,8 +1,9 @@
 from __future__ import annotations
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from enum import Enum
 from functools import cached_property
 from random import choice, randint, sample
+from itertools import islice
 
 Binding = dict["Var", "Formula"]
 
@@ -265,7 +266,7 @@ class Formula:
 
     def traverse(
         self, order_type: OrderType = OrderType.BREADTH_FIRST
-    ) -> Iterable[Formula]:
+    ) -> Iterator[Formula]:
         """Traverses the formula tree in the given OrderType."""
         match order_type:
             case OrderType.INORDER:
@@ -273,7 +274,7 @@ class Formula:
             case OrderType.BREADTH_FIRST:
                 return self.traverse_breadth()
 
-    def traverse_inorder(self) -> Iterable[Formula]:
+    def traverse_inorder(self) -> Iterator[Formula]:
         """Inorder tree traversal."""
         match self:
             case Var() | Const():
@@ -286,9 +287,10 @@ class Formula:
                 yield from A.traverse_inorder()
                 yield from B.traverse_inorder()
 
-    def traverse_breadth(self) -> Iterable[Formula]:
+    def traverse_breadth(self) -> Iterator[Formula]:
         """Breadth first tree traversal."""
         queue = [self]
+        i = 0
         while len(queue) > 0:
             v = queue.pop()
             yield v
@@ -300,6 +302,39 @@ class Formula:
                 case BinaryOperator(A, B):
                     queue.insert(0, A)
                     queue.insert(0, B)
+            i += 1
+
+    def replace_at_pos(
+        self, pos: int, f: Formula, order_type: OrderType = OrderType.BREADTH_FIRST
+    ) -> Formula:
+        assert pos < len(self)
+        match order_type:
+            case OrderType.BREADTH_FIRST:
+                return self.replace_at_pos_breadth(pos, f)
+            case OrderType.INORDER:
+                return self.replace_at_pos_inorder(pos, f)
+
+    def replace_at_pos_breadth(self, pos: int, f: Formula) -> Formula:
+        raise NotImplementedError(
+            "replace_at_pos is not implemented for BREADTH_FIRST order_type"
+        )
+
+    def replace_at_pos_inorder(
+        self, pos: int, f: Formula, current_pos: int = 0
+    ) -> Formula:
+        if current_pos == pos:
+            return f
+        match self:
+            case Var() | Const():
+                return self
+            case UnaryOperator(A):
+                return self.__class__(A.replace_at_pos_inorder(pos, f, current_pos + 1))
+            case BinaryOperator(A, B):
+                left = A.replace_at_pos_inorder(pos, f, current_pos + 1)
+                right = B.replace_at_pos_inorder(pos, f, current_pos + 1 + len(left))
+                return self.__class__(left, right)
+            case _:
+                raise ValueError("UNREACHABLE")
 
     @cached_property
     def simp_double_neg(self) -> Formula:
