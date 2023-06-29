@@ -16,7 +16,7 @@ def merge_bindings(a: Binding, b: Binding) -> Binding | None:
 
 
 class OrderType(Enum):
-    INORDER = 0
+    PREORDER = 0
     BREADTH_FIRST = 1
 
 
@@ -269,23 +269,23 @@ class Formula:
     ) -> Iterator[Formula]:
         """Traverses the formula tree in the given OrderType."""
         match order_type:
-            case OrderType.INORDER:
-                return self.traverse_inorder()
+            case OrderType.PREORDER:
+                return self.traverse_preorder()
             case OrderType.BREADTH_FIRST:
                 return self.traverse_breadth()
 
-    def traverse_inorder(self) -> Iterator[Formula]:
-        """Inorder tree traversal."""
+    def traverse_preorder(self) -> Iterator[Formula]:
+        """Preorder tree traversal."""
         match self:
             case Var() | Const():
                 yield self
             case UnaryOperator(A):
                 yield self
-                yield from A.traverse_inorder()
+                yield from A.traverse_preorder()
             case BinaryOperator(A, B):
                 yield self
-                yield from A.traverse_inorder()
-                yield from B.traverse_inorder()
+                yield from A.traverse_preorder()
+                yield from B.traverse_preorder()
 
     def traverse_breadth(self) -> Iterator[Formula]:
         """Breadth first tree traversal."""
@@ -311,15 +311,15 @@ class Formula:
         match order_type:
             case OrderType.BREADTH_FIRST:
                 return self.replace_at_pos_breadth(pos, f)
-            case OrderType.INORDER:
-                return self.replace_at_pos_inorder(pos, f)
+            case OrderType.PREORDER:
+                return self.replace_at_pos_preorder(pos, f)
 
     def replace_at_pos_breadth(self, pos: int, f: Formula) -> Formula:
         raise NotImplementedError(
             "replace_at_pos is not implemented for BREADTH_FIRST order_type"
         )
 
-    def replace_at_pos_inorder(
+    def replace_at_pos_preorder(
         self, pos: int, f: Formula, current_pos: int = 0
     ) -> Formula:
         if current_pos == pos:
@@ -328,10 +328,12 @@ class Formula:
             case Var() | Const():
                 return self
             case UnaryOperator(A):
-                return self.__class__(A.replace_at_pos_inorder(pos, f, current_pos + 1))
+                return self.__class__(
+                    A.replace_at_pos_preorder(pos, f, current_pos + 1)
+                )
             case BinaryOperator(A, B):
-                left = A.replace_at_pos_inorder(pos, f, current_pos + 1)
-                right = B.replace_at_pos_inorder(pos, f, current_pos + 1 + len(left))
+                left = A.replace_at_pos_preorder(pos, f, current_pos + 1)
+                right = B.replace_at_pos_preorder(pos, f, current_pos + 1 + len(left))
                 return self.__class__(left, right)
             case _:
                 raise ValueError("UNREACHABLE")
