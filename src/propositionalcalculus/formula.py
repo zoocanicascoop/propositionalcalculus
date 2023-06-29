@@ -290,7 +290,6 @@ class Formula:
     def traverse_breadth(self) -> Iterator[Formula]:
         """Breadth first tree traversal."""
         queue = [self]
-        i = 0
         while len(queue) > 0:
             v = queue.pop()
             yield v
@@ -302,22 +301,36 @@ class Formula:
                 case BinaryOperator(A, B):
                     queue.insert(0, A)
                     queue.insert(0, B)
-            i += 1
+
+    @staticmethod
+    def from_traversal_breadth_first(traversal: Iterable[Formula]) -> Formula:
+        traversal = list(traversal)
+        assert len(traversal) > 0
+        stack = []
+        v: Formula = Const.TRUE  # for type checking
+        while len(traversal) > 0:
+            v = traversal.pop()
+            match v:
+                case Var() | Const():
+                    stack.append(v)
+                case UnaryOperator():
+                    f = stack.pop(0)
+                    stack.append(v.__class__(f))
+                case BinaryOperator():
+                    right = stack.pop(0)
+                    left = stack.pop(0)
+                    stack.append(v.__class__(left, right))
+        return v
 
     def replace_at_pos(
         self, pos: int, f: Formula, order_type: OrderType = OrderType.BREADTH_FIRST
     ) -> Formula:
         assert pos < len(self)
         match order_type:
-            case OrderType.BREADTH_FIRST:
-                return self.replace_at_pos_breadth(pos, f)
             case OrderType.PREORDER:
                 return self.replace_at_pos_preorder(pos, f)
-
-    def replace_at_pos_breadth(self, pos: int, f: Formula) -> Formula:
-        raise NotImplementedError(
-            "replace_at_pos is not implemented for BREADTH_FIRST order_type"
-        )
+            case OrderType.BREADTH_FIRST:
+                return self.replace_at_pos_breadth(pos, f)
 
     def replace_at_pos_preorder(
         self, pos: int, f: Formula, current_pos: int = 0
@@ -337,6 +350,11 @@ class Formula:
                 return self.__class__(left, right)
             case _:
                 raise ValueError("UNREACHABLE")
+
+    def replace_at_pos_breadth(self, pos: int, f: Formula) -> Formula:
+        raise NotImplementedError(
+            "replace_at_pos is not implemented for BREADTH_FIRST order_type"
+        )
 
     @cached_property
     def simp_double_neg(self) -> Formula:
