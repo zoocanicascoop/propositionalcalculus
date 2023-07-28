@@ -6,10 +6,12 @@ def main():
     parser = Parser()
     parser.set_language(TSLANG)
 
-    for node, f in parse_formulas(parser, "../../grammar/examples/example.txt"):
-        print(f'"{node.text.decode()}"  =>  {f}')
-    for rule in parse_rules(parser, "../../grammar/examples/MP.rule"):
-        print(rule)
+    for f in parse_formulas(parser, "../../grammar/examples/example.txt"):
+        print(f)
+    # for rule in parse_rules(parser, "../../grammar/examples/MP.rule"):
+    #     print(rule)
+    # for f in parse_formulas(parser, "../../grammar/examples/absurd.proof"):
+    #     print(f)
 
 
 if __name__ == "__main__":

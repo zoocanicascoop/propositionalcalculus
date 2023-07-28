@@ -1,11 +1,14 @@
 from __future__ import annotations
+
 from typing import Literal
+
 from .formula import Formula, Formulas, Imp, Var
 from .inference import (
+    AssumptionInclusion,
+    AxS,
+    InferenceRule,
     Proof,
     ProofStep,
-    InferenceRule,
-    AxS,
     RuleApplication,
     proof_mixer,
 )
@@ -57,8 +60,24 @@ def assumption_to_implication_case(
     else:
         # The conclusion comes from an application of a modus ponens.
         last_step = proof.steps[-1]
-        assert isinstance(last_step, RuleApplication) and last_step.rule == MP
+        assert (
+            isinstance(last_step, RuleApplication) and last_step.rule == MP
+        ), f"{last_step = }"
         return 3
+
+
+def f_implies_f_proof(f: Formula, assumptions: list[Formula]):
+    return PCProof(
+        assumptions,
+        f >> f,
+        [
+            AxS(0, {A: f, B: f}),
+            AxS(0, {A: f >> f, B: f}),
+            AxS(1, {A: f, B: f >> f, C: f}),
+            MP(1, 2),
+            MP(0, 3),
+        ],
+    )
 
 
 def assumption_to_implication(proof: PCProof, assumption: Formula) -> PCProof:
@@ -70,6 +89,7 @@ def assumption_to_implication(proof: PCProof, assumption: Formula) -> PCProof:
             proof.steps.append(MP(i - 2, i - 1))
             proof.conclusion = assumption >> proof.conclusion
             return proof
+
         case 2:
             assert (
                 isinstance(proof.conclusion, Imp)
@@ -77,7 +97,6 @@ def assumption_to_implication(proof: PCProof, assumption: Formula) -> PCProof:
             )
             assumptions = proof.assumptions.copy()
             assumptions.remove(assumption)
-
             return PCProof(
                 assumptions,
                 assumption >> proof.conclusion,
@@ -97,12 +116,30 @@ def assumption_to_implication(proof: PCProof, assumption: Formula) -> PCProof:
             # deducción, que tiene en cuenta el caso particular de
             # demostraciones con solo un paso (teniendo en cuenta que las
             # demostraciones incluyen como pasos el uso de assumptions)
-            p1 = assumption_to_implication(
-                PCProof.from_proof(proof.step_subproof(i1)), assumption
-            )
-            p2 = assumption_to_implication(
-                PCProof.from_proof(proof.step_subproof(i2)), assumption
-            )
+            if isinstance(proof.steps[i1], AssumptionInclusion):
+                f: Formula = proof.assumptions[proof.steps[i1].index]
+                if f == assumption:
+                    p1 = proof.step_subproof(i1, delete_superflous_assumptions=True)
+                else:
+                    p1 = f_implies_f_proof(
+                        f, proof.assumptions
+                    ).delete_superflous_assumptions()
+            else:
+                p1 = assumption_to_implication(
+                    PCProof.from_proof(proof.step_subproof(i1)), assumption
+                )
+            if isinstance(proof.steps[i2], AssumptionInclusion):
+                f: Formula = proof.assumptions[proof.steps[i2].index]
+                if f == assumption:
+                    p2 = proof.step_subproof(i2, delete_superflous_assumptions=True)
+                else:
+                    p2 = f_implies_f_proof(
+                        f, proof.assumptions
+                    ).delete_superflous_assumptions()
+            else:
+                p2 = assumption_to_implication(
+                    PCProof.from_proof(proof.step_subproof(i2)), assumption
+                )
             assumptions, steps = proof_mixer(p1, p2)
             assert isinstance(p1.conclusion, Imp)
             steps.append(

@@ -1,5 +1,8 @@
 from functools import cached_property
-from .formula import Formula, Var, Const, UnaryOperator, BinaryOperator
+
+from rich.table import Table as rTable
+
+from .formula import BinaryOperator, Const, Formula, UnaryOperator, Var
 
 Assign = dict[Var, bool]
 
@@ -39,13 +42,18 @@ class TableLine:
         return self.line[self.repr_pos]
 
     def __str__(self) -> str:
-        result = f"\033[92m{format_ass(self.ass)}\033[0m\t" if self.show_ass else ""
+        result = f"{format_ass(self.ass)}\t" if self.show_ass else ""
         for i, e in enumerate(self.line):
             if i == self.repr_pos:
-                result += f"\033[91m{1 if e else 0}\033[0m\t"
+                result += f"{1 if e else 0}\t"
             else:
                 result += f"{1 if e else 0}\t"
         return result
+
+    def rich_row(self):
+        return [str(int(self.ass[v])) for v in sort_vars(set(self.ass.keys()))] + [
+            f"{1 if e else 0}" for e in self.line
+        ]
 
     @staticmethod
     def table_line_rec(f: Formula, ass: Assign) -> tuple[list[bool], int]:
@@ -103,6 +111,23 @@ class Table:
         for line in self.lines:
             result += f"{line}\n"
         return result
+
+    def rich(self):
+        t = rTable()
+        current_header = ""
+        for var in self.vars:
+            t.add_column(f"[green]{var}", style="green")
+        for char in str(self.f):
+            if char in "()":
+                current_header += char
+            else:
+                current_header += char
+                t.add_column(current_header)
+                current_header = ""
+        self.lines[0].repr_pos
+        for line in self.lines:
+            t.add_row(*line.rich_row())
+        return t
 
 
 def is_tauto(f: Formula):

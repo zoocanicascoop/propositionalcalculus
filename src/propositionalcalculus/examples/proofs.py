@@ -20,6 +20,12 @@ absurd = PCProof(
     ],
 )
 
+a_from_a = PCProof(
+    [A],
+    A,
+    [Ass(0)],
+)
+
 a_implies_a = PCProof(
     [],
     A >> A,
@@ -33,17 +39,19 @@ a_implies_a = PCProof(
 )
 
 implication_transitivity = PCProof(
-    [A >> B, B >> C, A],
-    C,
+    [A >> B, B >> C],
+    A >> C,
     [
         Ass(0),
         Ass(1),
-        Ass(2),
-        MP(2, 0),
-        MP(3, 1),
+        AxS(0, {B: B >> C, A: A}),
+        MP(1, 2),
+        AxS(1, {A: A, B: B, C: C}),
+        MP(3, 4),
+        MP(0, 5),
     ],
 )
 
 mp_application = PCProof([A >> B, A], B, [Ass(0), Ass(1), MP(1, 0)])
 
-valid_proofs = [absurd, a_implies_a, implication_transitivity, mp_application]
+valid_proofs = [absurd, a_from_a, a_implies_a, implication_transitivity, mp_application]

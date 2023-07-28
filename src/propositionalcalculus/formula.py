@@ -3,7 +3,6 @@ from collections.abc import Iterable, Iterator
 from enum import Enum
 from functools import cached_property
 from random import choice, randint, sample
-from itertools import islice
 
 Binding = dict["Var", "Formula"]
 
@@ -306,21 +305,21 @@ class Formula:
     def from_traversal_breadth_first(traversal: Iterable[Formula]) -> Formula:
         traversal = list(traversal)
         assert len(traversal) > 0
-        stack = []
+        queue = []
         v: Formula = Const.TRUE  # for type checking
         while len(traversal) > 0:
             v = traversal.pop()
             match v:
                 case Var() | Const():
-                    stack.append(v)
+                    queue.append(v)
                 case UnaryOperator():
-                    f = stack.pop(0)
-                    stack.append(v.__class__(f))
+                    f = queue.pop(0)
+                    queue.append(v.__class__(f))
                 case BinaryOperator():
-                    right = stack.pop(0)
-                    left = stack.pop(0)
-                    stack.append(v.__class__(left, right))
-        return v
+                    right = queue.pop(0)
+                    left = queue.pop(0)
+                    queue.append(v.__class__(left, right))
+        return queue.pop()
 
     def replace_at_pos(
         self, pos: int, f: Formula, order_type: OrderType = OrderType.BREADTH_FIRST
@@ -352,9 +351,25 @@ class Formula:
                 raise ValueError("UNREACHABLE")
 
     def replace_at_pos_breadth(self, pos: int, f: Formula) -> Formula:
-        raise NotImplementedError(
-            "replace_at_pos is not implemented for BREADTH_FIRST order_type"
-        )
+        queue = [self]
+        traversal = []
+        i = 0
+        while len(queue) > 0:
+            v = queue.pop()
+            if pos == i:
+                queue.append(f)
+            else:
+                traversal.append(v)
+                match v:
+                    case Var() | Const():
+                        pass
+                    case UnaryOperator(A):
+                        queue.insert(0, A)
+                    case BinaryOperator(A, B):
+                        queue.insert(0, A)
+                        queue.insert(0, B)
+            i += 1
+        return Formula.from_traversal_breadth_first(traversal)
 
     @cached_property
     def simp_double_neg(self) -> Formula:

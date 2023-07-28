@@ -229,7 +229,7 @@ class Proof:
     def check(self) -> bool:
         return self.state[-1] == self.conclusion
 
-    def display(self):
+    def display(self, highlight_rule: int | None = None):
         t = Table(show_header=False, box=None)
         t.add_column("Section", vertical="middle", style="bold")
         t.add_column("Content")
@@ -240,9 +240,23 @@ class Proof:
         t.add_row("Conclusion", Padding(str(self.conclusion), (1, 0)))
         steps_t = Table.grid("n", "state", "step")
         error = False
+        deps_highlights: set[int] = set()
+        if highlight_rule and 0 <= highlight_rule < len(self.steps):
+            step = self.steps[highlight_rule]
+            if isinstance(step, RuleApplication):
+                deps_highlights = deps_highlights.union(set(step.assumption_indices))
+
         for i, (step, state) in enumerate(zip(self.steps, self.state)):
+            if i == highlight_rule:
+                style = "[bold dark_orange]"
+            elif i in deps_highlights:
+                style = "[bold magenta]"
+            else:
+                style = ""
             if state is not None:
-                steps_t.add_row(f"{i}. ", str(state), f" [italic]{step}")
+                steps_t.add_row(
+                    f"{style}{i}. ", f"{style}{state}", f" {style}[italic]{step}"
+                )
             else:
                 steps_t.add_row(
                     f"{i}. ", "[bright_red]error", f" [italic bright_red]{step}"
