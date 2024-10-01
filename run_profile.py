@@ -2,7 +2,7 @@
 
 from cProfile import Profile
 import pstats
-from liar.formula import Formula, Neg, Or, Var
+from propositionalcalculus.formula import Formula, Neg, Or, Var
 
 N = 1000
 
