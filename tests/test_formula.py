@@ -1,3 +1,4 @@
+from random import random, randrange
 import pytest
 from propositionalcalculus.formula import (
     And,
@@ -41,6 +42,35 @@ def test_len_vars_consts(random_formula: Formula):
             assert len(random_formula) > len(random_formula.vars) + len(
                 random_formula.consts
             )
+
+
+def test_from_traversal_breadth_first(random_formula: Formula):
+    traversal = random_formula.traverse_breadth()
+    f = Formula.from_traversal_breadth_first(traversal)
+    assert f == random_formula
+
+
+def test_replace_at_pos_inorder(random_formula: Formula):
+    """
+    Atención: este test solo comprueba que no se cambie la formula antes de
+    llegar al punto donde se reemplaza. A partir de ese punto deja de comprobar
+    """
+    new_f = ~Var("A")
+    pos = randrange(0, len(random_formula))
+    replaced_f = random_formula.replace_at_pos_preorder(pos, new_f)
+    current_pos = 0
+    original_generator = random_formula.traverse_preorder()
+    replaced_generator = replaced_f.traverse_preorder()
+    while True:
+        try:
+            original_current = next(original_generator)
+            replaced_current = next(replaced_generator)
+            if current_pos == pos:
+                break  # Se deja de comprobar
+            assert original_current.__class__ == replaced_current.__class__
+            current_pos += 1
+        except StopIteration:
+            break
 
 
 def test_simp_double_neg(random_formula: Formula):

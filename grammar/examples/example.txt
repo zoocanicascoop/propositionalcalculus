@@ -1,23 +1,4 @@
 Examples:
 
-A
-B
-T
-F
-¬ A
-A ∧ B ∧ B
-A ∨ B ∨ B
-
-A ∨ B ∧ B
-A ∧ B ∨ B
-
-A → B → C
-A → B → C
-
-A → B ∧ C
-A → B ∨ C
-
-A ∧ B → C
-A ∨ B → C
 
 A ∨ (B → C)

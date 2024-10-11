@@ -1,5 +1,5 @@
 from __future__ import annotations
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from enum import Enum
 from functools import cached_property
 from random import choice, randint, sample
@@ -15,7 +15,7 @@ def merge_bindings(a: Binding, b: Binding) -> Binding | None:
 
 
 class OrderType(Enum):
-    INORDER = 0
+    PREORDER = 0
     BREADTH_FIRST = 1
 
 
@@ -265,28 +265,28 @@ class Formula:
 
     def traverse(
         self, order_type: OrderType = OrderType.BREADTH_FIRST
-    ) -> Iterable[Formula]:
+    ) -> Iterator[Formula]:
         """Traverses the formula tree in the given OrderType."""
         match order_type:
-            case OrderType.INORDER:
-                return self.traverse_inorder()
+            case OrderType.PREORDER:
+                return self.traverse_preorder()
             case OrderType.BREADTH_FIRST:
                 return self.traverse_breadth()
 
-    def traverse_inorder(self) -> Iterable[Formula]:
-        """Inorder tree traversal."""
+    def traverse_preorder(self) -> Iterator[Formula]:
+        """Preorder tree traversal."""
         match self:
             case Var() | Const():
                 yield self
             case UnaryOperator(A):
                 yield self
-                yield from A.traverse_inorder()
+                yield from A.traverse_preorder()
             case BinaryOperator(A, B):
                 yield self
-                yield from A.traverse_inorder()
-                yield from B.traverse_inorder()
+                yield from A.traverse_preorder()
+                yield from B.traverse_preorder()
 
-    def traverse_breadth(self) -> Iterable[Formula]:
+    def traverse_breadth(self) -> Iterator[Formula]:
         """Breadth first tree traversal."""
         queue = [self]
         while len(queue) > 0:
@@ -300,6 +300,76 @@ class Formula:
                 case BinaryOperator(A, B):
                     queue.insert(0, A)
                     queue.insert(0, B)
+
+    @staticmethod
+    def from_traversal_breadth_first(traversal: Iterable[Formula]) -> Formula:
+        traversal = list(traversal)
+        assert len(traversal) > 0
+        queue = []
+        v: Formula = Const.TRUE  # for type checking
+        while len(traversal) > 0:
+            v = traversal.pop()
+            match v:
+                case Var() | Const():
+                    queue.append(v)
+                case UnaryOperator():
+                    f = queue.pop(0)
+                    queue.append(v.__class__(f))
+                case BinaryOperator():
+                    right = queue.pop(0)
+                    left = queue.pop(0)
+                    queue.append(v.__class__(left, right))
+        return queue.pop()
+
+    def replace_at_pos(
+        self, pos: int, f: Formula, order_type: OrderType = OrderType.BREADTH_FIRST
+    ) -> Formula:
+        assert pos < len(self)
+        match order_type:
+            case OrderType.PREORDER:
+                return self.replace_at_pos_preorder(pos, f)
+            case OrderType.BREADTH_FIRST:
+                return self.replace_at_pos_breadth(pos, f)
+
+    def replace_at_pos_preorder(
+        self, pos: int, f: Formula, current_pos: int = 0
+    ) -> Formula:
+        if current_pos == pos:
+            return f
+        match self:
+            case Var() | Const():
+                return self
+            case UnaryOperator(A):
+                return self.__class__(
+                    A.replace_at_pos_preorder(pos, f, current_pos + 1)
+                )
+            case BinaryOperator(A, B):
+                left = A.replace_at_pos_preorder(pos, f, current_pos + 1)
+                right = B.replace_at_pos_preorder(pos, f, current_pos + 1 + len(left))
+                return self.__class__(left, right)
+            case _:
+                raise ValueError("UNREACHABLE")
+
+    def replace_at_pos_breadth(self, pos: int, f: Formula) -> Formula:
+        queue = [self]
+        traversal = []
+        i = 0
+        while len(queue) > 0:
+            v = queue.pop()
+            if pos == i:
+                queue.append(f)
+            else:
+                traversal.append(v)
+                match v:
+                    case Var() | Const():
+                        pass
+                    case UnaryOperator(A):
+                        queue.insert(0, A)
+                    case BinaryOperator(A, B):
+                        queue.insert(0, A)
+                        queue.insert(0, B)
+            i += 1
+        return Formula.from_traversal_breadth_first(traversal)
 
     @cached_property
     def simp_double_neg(self) -> Formula:
