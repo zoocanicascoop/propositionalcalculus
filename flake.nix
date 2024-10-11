@@ -80,10 +80,10 @@
         };
 
         devShells.default = pkgs.mkShell {
-          inputsFrom = [
-            pkgs.propositionalcalculus
-            pkgs.propositionalcalculus-grammar
-          ];
+          # inputsFrom = [
+          #   pkgs.propositionalcalculus
+          #   pkgs.propositionalcalculus-grammar
+          # ];
           packages = with pkgs; [
             nodejs
             tree-sitter
