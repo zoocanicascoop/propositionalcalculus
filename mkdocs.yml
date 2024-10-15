@@ -1,0 +1,44 @@
+site_name: propositionalcalculus
+repo_name: zoocanicascoop/propositionalcalculus
+repo_url: https://github.com/zoocanicascoop/propositionalcalculus
+theme:
+  name: material
+  language: es
+  features:
+    # - navigation.tabs
+    # - navigation.tabs.sticky
+    - navigation.tracking
+    - navigation.sections
+    - navigation.indexes
+    - toc.follow
+    - toc.integrate
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_bases: false
+          rendering:
+            show_root_heading: true
+
+watch:
+  - src
+
+markdown_extensions:
+  - footnotes
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Home: index.md
+  - Lógica:
+    - logica/index.md
+    - logica/reconocimiento-de-patrones.md
+    - logica/tablas-de-verdad.md
+  - Referencia:
+    - Formula: referencia/formulas.md
