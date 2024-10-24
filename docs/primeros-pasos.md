@@ -10,6 +10,11 @@ siguiente comando:
 curl -sSL https://install.python-poetry.org | python3 -
 ```
 
+Una vez instalado poetry deberás incluirlo en el path:
+```bash
+echo "export PATH=\"$HOME/.local/bin/:$PATH\"" >> ~/.bashrc && source ~/.bashrc
+```
+
 Si encuentras problemas con la instalación consulta la [documentación
 oficial](https://python-poetry.org/docs/#installing-with-the-official-installer).
 
@@ -25,11 +30,6 @@ Para instalar las dependencias ejecuta
 
 ```bash
 poetry install
-```
-
-Una vez instalado poetry deberás incluirlo en el path:
-```bash
-echo "export PATH=\"$HOME/.local/bin/:$PATH\"" >> ~/.bashrc
 ```
 
 ### Entorno de desarrollo
