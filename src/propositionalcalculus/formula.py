@@ -4,10 +4,21 @@ from enum import Enum
 from functools import cached_property
 from random import choice, randint, sample
 
+# Definición de tipo Binding. Un binding es una asignación de variables a fórmulas.
 Binding = dict["Var", "Formula"]
 
 
 def merge_bindings(a: Binding, b: Binding) -> Binding | None:
+    """
+    Mezcla dos bindings.
+
+    Si ambas combinaciones contienen la misma clave con valores diferentes, se
+    devuelve None en lugar del binding mezclado (equivalente a un error).
+
+    :param a: binding 
+    :param b: binding 
+    :return: nuevo binding en caso de que no haya conflictos. None en otro caso.
+    """
     for key in a.keys():
         if key in b and a[key] != b[key]:
             return None
@@ -15,25 +26,50 @@ def merge_bindings(a: Binding, b: Binding) -> Binding | None:
 
 
 class OrderType(Enum):
+    """Tipos de orden para recorrer un árbol"""
     PREORDER = 0
     BREADTH_FIRST = 1
 
 
 class Formula:
     """
-    A class for representing propositional formulas of classical logic.
+    Representación de fórmulas proposicionales.
+
+    Esta clase no está entendida para ser utilizada directamente, salvo por los
+    métodos estáticos de generación de fórmulas aleatorias o a partir de una
+    representación en string.
+
+    La definición recursiva de las fórmulas está implementada en este módulo
+    mediante la dependencia de clases entre esta clase, Formula, y:
+    - Clases Var y Const (casos base de la definición recursiva)
+    - Clase Not (operador unario)
+    - Clases And, Or e Imp (operadores binarios)
+
+    Los operadores tienen como parámetros de sus constructures otras fórmulas.
+    Aquí es dónde se encuentra esta recursividad.
     """
 
-    def __str__(self):
-        return repr(self)
+    def __repr__(self):
+        """
+        Representación en string de la fórmula. Las clases que heredan de
+        Formula deben implementar esta función.
+        """
+        raise NotImplementedError()
 
     @property
     def str_polish(self) -> str:
+        """
+        Representación en notación polaca. Propiedad implementada por las clases
+        que heredan de Formula.
+        """
         raise NotImplementedError()
 
     @staticmethod
     def parse_polish(string: str, stack: list[Formula] = []) -> Formula | None:
-        """Parses a formula expressed in the reversed polish notation."""
+        """
+        Dada una string de una fórmula en notación polaca, construye y devuelve 
+        la fórmula correspondiente.
+        """
         string = string.replace(" ", "")
         if len(string) == 0:
             return stack.pop()
@@ -69,17 +105,11 @@ class Formula:
 
     @cached_property
     def graph(self):
-        """Graphviz code for visually representing the formula tree."""
+        """
+        Código fuente de la representación del árbol de la fórmula en Graphviz.
+
+        """
         return "graph {\n  " + "\n  ".join(self._graph_rec()) + "\n}"
-
-    def render_graph(self, path="./graph.gv"):
-        """Utility for rendering the formula tree with graphviz."""
-        import graphviz
-        from graphviz.backend.rendering import pathlib
-
-        filepath = pathlib.Path(path)
-        filepath.write_text(self.graph, encoding="utf8")
-        graphviz.render("dot", "pdf", filepath).replace("\\", "/")
 
     def _graph_rec(self, prefix="") -> list[str]:
         def name(f: Formula) -> str:
@@ -117,25 +147,46 @@ class Formula:
             case _:
                 raise ValueError(f"UNREACHABLE")
 
+    def render_graph(self, path="./graph.gv"):
+        """
+        Utilidad para llamar a graphviz y renderizar el árbol de la fórmula.
+        Se generarán dos ficheros: uno con el código graphviz y otro con la
+        renderización en pdf.
+        :param path: ruta donde se guardará el fichero con el código graphviz.
+        """
+        import graphviz
+        from graphviz.backend.rendering import pathlib
+
+        filepath = pathlib.Path(path)
+        filepath.write_text(self.graph, encoding="utf8")
+        graphviz.render("dot", "pdf", filepath).replace("\\", "/")
+
     def __eq__(self, other):
+        """Dos fórmulas son iguales si su representación en string es igual."""
         return str(self) == str(other)
 
     def __invert__(self):
+        """Override del operador ~ para la negación."""
         return Neg(self)
 
     def __and__(self, other):
+        """Override del operador & para la conjunción."""
         return And(self, other)
 
     def __or__(self, other):
+        """Override del operador | para la disyunción."""
         return Or(self, other)
 
     def __rshift__(self, other):
+        """Override del operador >> para la implicación."""
         return Imp(self, other)
 
     def __hash__(self):
+        """El hash de una fórmula es el hash de su representación en string."""
         return hash(repr(self))
 
     def __len__(self) -> int:
+        """La longitud de una fórmula es el número de nodos en su árbol."""
         match self:
             case Var() | Const():
                 return 1
@@ -149,11 +200,10 @@ class Formula:
     @staticmethod
     def random(n_vars: int, max_depth: int, include_consts: bool = False) -> Formula:
         """
-        Generates a random formula, represented in the reverse polish notation.
-
-        :n_vars: number of variables from wich to choice when generating the random formula
-        :max_depth: maximum depth of the formula tree
-        :include_consts: wether to include constants in the formula generation
+        Generador de fórmulas aleatorias, en base a Formula.random_polish.
+        Esta función es un wrapper de Formula.parse_polish, en el que
+        posteriormente a la generación aleatoria, se convierte la
+        representación en una fórmula utilizando Formula.parse_polish.
         """
         f = Formula.parse_polish(
             Formula.random_polish(n_vars, max_depth, include_consts)
@@ -164,11 +214,12 @@ class Formula:
     @staticmethod
     def random_polish(n_vars: int, max_depth: int, include_consts: bool = False) -> str:
         """
-        Generates a random formula, represented in the reverse polish notation.
+        Generador aleatorio de representaciones de fórmulas en notación polaca.
 
-        :n_vars: number of variables from wich to choice when generating the random string
-        :max_depth: maximum depth of the formula tree
-        :include_consts: wether to include constants in the formula generation
+        :n_vars: número máximo de variables que incluir
+        :max_depth: profundidad máxima del árbol de la fórmula
+        :include_consts: si se incluyen las constantes T y F en la fórmula.
+        :return: representación en notación polaca de la fórmula generada.
         """
         assert max_depth >= 1
         if max_depth == 1:
@@ -191,33 +242,9 @@ class Formula:
                 case _:
                     raise ValueError("UNREACHABLE")
 
-    # Old implementation of random
-    # @staticmethod
-    # def random(n_vars: int, n_iters: int, include_consts: bool = False) -> Formula:
-    #     """Random formula generator."""
-    #     formulas: set[Const | Var | Neg | And | Or | Imp] = set(Var.generate(n_vars))
-    #     if include_consts:
-    #         formulas = formulas.union({Const.FALSE, Const.TRUE})
-    #     current_formula = None
-    #     assert n_iters > 0, "El número de iteraciones debe ser positivo"
-    #     for _ in range(n_iters):
-    #         option = choice(["unary", "binary"])
-    #         if option == "unary":
-    #             Op = choice(unary_operators)
-    #             f = choice(list(formulas))
-    #             current_formula = Op(f)
-    #         elif option == "binary":
-    #             Op = choice(binary_operators)
-    #             f1, f2 = sample(list(formulas), 2)
-    #             current_formula = Op(f1, f2)
-    #         assert isinstance(current_formula, Formula)
-    #         formulas.add(current_formula)
-    #     assert isinstance(current_formula, Formula)
-    #     return current_formula
-
     @cached_property
     def vars(self) -> set["Var"]:
-        """Set of variables present in the formula."""
+        """Conjunto de variables de una fórmula."""
         match self:
             case Var():
                 return {self}
@@ -232,7 +259,7 @@ class Formula:
 
     @cached_property
     def consts(self) -> set["Const"]:
-        """Set of constants present in the formula."""
+        """Conjuento de constantes de una fórmula."""
         match self:
             case Var():
                 return set()
@@ -247,9 +274,11 @@ class Formula:
 
     def subs(self, binding: Binding) -> Formula:
         """
-        Substitutes variables of the formula with formulas.
+        Dado un binding, sustituye las variables de la fórmula por las fórmulas
+        correspondientes en el binding.
 
-        :binding: the dictionary that maps variables to formulas.
+        :binding: el binding a aplicar en la sustitución.
+        :return: la nueva fórmula en la que se han sustituido las variables.
         """
         match self:
             case Var():
@@ -266,7 +295,7 @@ class Formula:
     def traverse(
         self, order_type: OrderType = OrderType.BREADTH_FIRST
     ) -> Iterator[Formula]:
-        """Traverses the formula tree in the given OrderType."""
+        """Recorre la fórmula siguiendo un orden determinado."""
         match order_type:
             case OrderType.PREORDER:
                 return self.traverse_preorder()
@@ -274,7 +303,7 @@ class Formula:
                 return self.traverse_breadth()
 
     def traverse_preorder(self) -> Iterator[Formula]:
-        """Preorder tree traversal."""
+        """Recorre la fórmula en preorden."""
         match self:
             case Var() | Const():
                 yield self
@@ -287,7 +316,7 @@ class Formula:
                 yield from B.traverse_preorder()
 
     def traverse_breadth(self) -> Iterator[Formula]:
-        """Breadth first tree traversal."""
+        """Recorre la fórmula en el orden de anchura primero."""
         queue = [self]
         while len(queue) > 0:
             v = queue.pop()
@@ -303,6 +332,7 @@ class Formula:
 
     @staticmethod
     def from_traversal_breadth_first(traversal: Iterable[Formula]) -> Formula:
+        """Construye una fórmula a partir de un recorrido en anchura primero."""
         traversal = list(traversal)
         assert len(traversal) > 0
         queue = []
@@ -324,6 +354,15 @@ class Formula:
     def replace_at_pos(
         self, pos: int, f: Formula, order_type: OrderType = OrderType.BREADTH_FIRST
     ) -> Formula:
+        """
+        Reemplaza la fórmula en una posición determinada por otra fórmula.
+
+        :param pos: posición en la que se va a reemplazar la fórmula.
+        :param f: fórmula por la que se va a reemplazar.
+        :param order_type: tipo de orden en el que se va a recorrer la fórmula.
+
+        :return: la fórmula con la sustitución realizada.
+        """
         assert pos < len(self)
         match order_type:
             case OrderType.PREORDER:
@@ -334,6 +373,10 @@ class Formula:
     def replace_at_pos_preorder(
         self, pos: int, f: Formula, current_pos: int = 0
     ) -> Formula:
+        """
+        Reemplaza la fórmula en una posición determinada por otra fórmula, 
+        siguiendo el orden de preorden.
+        """
         if current_pos == pos:
             return f
         match self:
@@ -351,6 +394,10 @@ class Formula:
                 raise ValueError("UNREACHABLE")
 
     def replace_at_pos_breadth(self, pos: int, f: Formula) -> Formula:
+        """
+        Reemplaza la fórmula en una posición determinada por otra fórmula, 
+        siguiendo el orden de anchura primero.
+        """
         queue = [self]
         traversal = []
         i = 0
@@ -373,7 +420,9 @@ class Formula:
 
     @cached_property
     def simp_double_neg(self) -> Formula:
-        """Equivalent function where all double negations are simplified."""
+        """
+        Fórmula equivalente en la que se han eliminado las dobles negaciones.
+        """
         match self:
             case Var() | Const():
                 return self
@@ -389,8 +438,8 @@ class Formula:
     @cached_property
     def subs_imp(self) -> Formula:
         """
-        Equivalent funciton where all implications are substituted using the
-        A → B iff ¬A ∨ B equivalence.
+        Fórula equivalente en la que se han eliminado las implicaciones,
+        mediante la equivalencia A → B iff ¬A ∨ B.
         """
         match self:
             case Var() | Const():
@@ -407,9 +456,8 @@ class Formula:
     @cached_property
     def push_neg(self) -> Formula:
         """
-        Equivalent function where all the negations are pushed down into the
-        formula tree, using De Morgan formulas. Double negations are also
-        eliminated.
+        Fórmula eqiuvalente en la que se han empujado todas las negaciones hacia
+        abajo en el árbol de la fórmula, utilizando las fórmulas de De Morgan.
         """
         match self:
             case Var() | Const():
@@ -432,8 +480,8 @@ class Formula:
     @cached_property
     def distribute_or(self) -> Formula:
         """
-        Equivalent function where the distributive property of the disjuntion is
-        applied.
+        Fórmula equivalente en la que se ha aplicado la propiedad distributiva
+        de la disyunción.
         """
         f1, f2 = self, self._distribute_or_step
         while f2 != f1:
@@ -443,10 +491,6 @@ class Formula:
 
     @cached_property
     def _distribute_or_step(self) -> Formula:
-        """
-        Equivalent function where the distributive property of the disjunction
-        is applied once in all subtrees of the formula.
-        """
         match self:
             case Var() | Const():
                 return self
@@ -472,8 +516,8 @@ class Formula:
     @cached_property
     def simp_const(self) -> Formula:
         """
-        Equivalent formula where all the redundant constants and negations of
-        constants are simplified.
+        Fórmula equivalente en la que se han eliminado las constantes
+        redundantes y simplificado las negaciones de constantes.
         """
         f1, f2 = self, self._simp_const_step
         while f2 != f1:
@@ -524,23 +568,24 @@ class Formula:
     @cached_property
     def CNF(self) -> Formula:
         """
-        Conjunctive Normal Form.
+        Forma normal conjuntiva de la fórmula.
 
-        This normal form is calculated by appliying sequentially the following equivalences:
-        - All implications are removed using subs_imp,
-        - all negations are pushed down the formula tree with push_neg,
-        - the distributive property of disjuntion is applied with distribute_or,
-        - redundant constants are deleted using simp_const.
+        Se calcula aplicando de forma secuencial las siguientes equivalencias:
+        - ee eliminan todas las implicaciones con subs_imp,
+        - se empujan todas las negaciones hacia abajo en el árbol de la fórmula
+          utilizando push_neg,
+        - se aplica la propiedad distributiva de la disyunción con distribute_or,
+        - se eliminan las constantes redundantes con simp_const.
         """
         return self.subs_imp.push_neg.distribute_or.simp_const
 
     @cached_property
     def CNF_structured(self) -> list[set[Neg | Var | Const]]:
         """
-        A structured version of the CNF.
+        Versión estructurada de la CNF.
 
-        This function returns a list of sets of simple formulas (negations of
-        variables, variables or constants).
+        :return: lista de conjuntos de fórmulas simples (negaciones de variables,
+            variables o constantes).
         """
         self = self.CNF
         result: list[set[Neg | Var | Const]] = list()
@@ -574,13 +619,19 @@ class Formula:
 
     @staticmethod
     def print_CNF_structured(cnf: list[set[Formula]]) -> str:
+        """
+        Función de utilidad para imprimir una fórmula a partir de su CNF 
+        estructurada.
+        """
         return "∧".join(
             [f"({'∨'.join([ str(e) for e in list(disj)])})" for disj in cnf]
         )
 
     @cached_property
     def is_tauto(self) -> bool:
-        """Determines if the formula is a tautology, using the formula CNF"""
+        """
+        Determina si una fórmula es una tautología en base a su CNF.
+        """
         for l in self.CNF_structured:
             affirmative, negative = set(), set()
             for f in l:
@@ -599,15 +650,20 @@ class Formula:
                 return False
         return True
 
-
+# Tipo auxiliar para representar una fórmula o una lista de fórmulas.
 Formulas = Formula | list[Formula]
 
 
 def formulas_to_list(fs: Formulas) -> list[Formula]:
+    """Convierte una fórmula o una lista de fórmulas en una lista de fórmulas."""
     return [fs] if isinstance(fs, Formula) else fs
 
 
 class UnaryOperator(Formula):
+    """
+    Los operadores unarios son aquellos que tienen una única fórmula como 
+    argumento.
+    """
     symbol: str
     __match_args__ = ("f",)
 
@@ -626,6 +682,9 @@ class UnaryOperator(Formula):
 
 
 class BinaryOperator(Formula):
+    """
+    Los operadores binarios son aquellos que tienen dos fórmulas como argumento.
+    """
     symbol: str
     __match_args__ = ("left", "right")
 
@@ -644,6 +703,10 @@ class BinaryOperator(Formula):
 
 
 class Var(Formula):
+    """
+    Las variables son fórmulas simples, representadas por una letra, que podrá
+    tomar valores semánticos de verdadero o falso.
+    """
     var_names = "ABCDEGHIJKLMNOPQRSVWXYZ"
 
     def __init__(self, name: str):
@@ -674,6 +737,10 @@ class Var(Formula):
 
 
 class Const(Formula, Enum):
+    """
+    Las constantes son fórmulas simples que representan valores semánticos fijos
+    de verdadero o falso.
+    """
     FALSE = 0
     TRUE = 1
 
@@ -686,6 +753,9 @@ class Const(Formula, Enum):
 
 
 class Neg(UnaryOperator):
+    """
+    Neg es el operador unario de negación.
+    """
     symbol = "¬"
 
     def semantics(self, value: bool) -> bool:
@@ -693,6 +763,9 @@ class Neg(UnaryOperator):
 
 
 class And(BinaryOperator):
+    """
+    And es el operador binario de conjunción.
+    """
     symbol = "∧"
 
     def semantics(self, left_value: bool, right_value: bool) -> bool:
@@ -700,6 +773,9 @@ class And(BinaryOperator):
 
 
 class Or(BinaryOperator):
+    """ 
+    Or es el operador binario de disyunción.
+    """
     symbol = "∨"
 
     def semantics(self, left_value: bool, right_value: bool) -> bool:
@@ -707,6 +783,9 @@ class Or(BinaryOperator):
 
 
 class Imp(BinaryOperator):
+    """
+    Imp es el operador binario de implicación.
+    """
     symbol = "→"
 
     def semantics(self, left_value: bool, right_value: bool) -> bool:
