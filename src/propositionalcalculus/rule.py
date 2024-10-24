@@ -21,12 +21,13 @@ def pattern_match(
     iterador que devuelve el binding para el subárbol actual, siguiendo un
     recorrido de fórmula particular.
 
-    :param pattern: el patrón a buscar 
-    :param subject: la fórmula en la que busca el patrón
-    :param traverse_order: el tipo de recorrido
+    Args:
+        pattern: el patrón a buscar 
+        subject: la fórmula en la que busca el patrón
+        traverse_order: el tipo de recorrido
 
-    :return: un iterador que devuelve el binding asociado a cada posición, si se
-    ha encontrado el patrón, o None en caso contrario.
+    Returns: 
+        un iterador que devuelve el binding asociado a cada posición, si se ha encontrado el patrón, o None en caso contrario.
     """
 
     def _match_inner(
@@ -74,9 +75,9 @@ class Rule:
 
     def __init__(self, head: Formula, body: Formula):
         """ 
-        Constructor de las reglas de sustitución.
-        :param head: cabecera de la regla (patrón que se va a sustituir)
-        :param body: cuerpo de la regla (por lo que se va a sustituir)
+        Args:
+            head: cabecera de la regla (patrón que se va a sustituir)
+            body: cuerpo de la regla (por lo que se va a sustituir)
         """
         self.head = head
         self.body = body
@@ -116,10 +117,12 @@ class Rule:
         """
         Búsqueda de ocurrencias del patrón de la cabecera en una fórmula dada.
 
-        :param value: fórmula en la que se busca el patrón
-        :param traverse_order: tipo de recorrido
+        Args:
+            value: fórmula en la que se busca el patrón
+            traverse_order: tipo de recorrido
 
-        :return: el iterador devuelto por el proceso de reconocimiento de patrones.
+        Returns:
+            el iterador devuelto por el proceso de reconocimiento de patrones.
         """
         return pattern_match(self.head, value, traverse_order)
 
@@ -132,12 +135,13 @@ class Rule:
         """
         Aplicación de la regla a una fórmula, en una posición dada.
 
-        :param value: fórmula a la que se le aplica la regla
-        :param pos: posición en la que se aplica la regla
-        :param traverse_order: tipo de recorrido
+        Args:
+            value: fórmula a la que se le aplica la regla
+            pos: posición en la que se aplica la regla
+            traverse_order: tipo de recorrido
 
-        :return: la fórmula resultante de aplicar la regla, o None si no se ha
-            podido aplicar.
+        Returns:
+            la fórmula resultante de aplicar la regla, o None si no se ha podido aplicar.
         """
         binding = next(islice(self.match(value, traverse_order), pos, pos + 1))
         if binding is None:
@@ -153,10 +157,11 @@ class Rule:
         Aplicación de la regla a una fórmula, en la primera posición en la que
         se puede aplicar.
 
-        :param value: fórmula a la que se le aplica la regla
-        :param traverse_order: tipo de recorrido
-        :return: la fórmula resultante de aplicar la regla, o None si no se ha 
-            podido aplicar.
+        Args:
+            value: fórmula a la que se le aplica la regla
+            traverse_order: tipo de recorrido
+        Returns:
+            la fórmula resultante de aplicar la regla, o None si no se ha podido aplicar.
         """
         # TODO: optimizar para no hacer match dos veces
         pos = next(
@@ -177,9 +182,11 @@ class Rule:
         Para evitar bucles infinitos, se comprueba que la cabecera de la regla no
         aparezca en el cuerpo de la regla.
 
-        :param value: fórmula a la que se le aplica la regla
+        Args:
+            value: fórmula a la que se le aplica la regla
 
-        :return: la fórmula resultante de aplicar la regla iterativamente.
+        Returns:
+            la fórmula resultante de aplicar la regla iterativamente.
         """
         assert (
             list(filter(lambda m: m is not None, pattern_match(self.head, self.body)))
@@ -200,9 +207,10 @@ class Rule:
         se puedan aplicar más reglas.
         Dada una lista de reglas, devuelve una función que aplica todas las
         reglas a una función.
-        :param rules: lista de reglas
-        :return: función que dada una fórmula deveulve la fórmula resultante de
-            aplicar todas las reglas de la lista a la fórmula.
+        Args:
+            rules: lista de reglas
+        Returns: 
+            función que dada una fórmula deveulve la fórmula resultante de aplicar todas las reglas de la lista a la fórmula.
         """
         def f(value: Formula):
             result = value
@@ -245,10 +253,12 @@ class Rule:
         En lugar de devolver una función, esta función recibe la fórmula a la que
         aplicar las reglas como parámetro.
 
-        :param rules: lista de reglas
-        :param value: fórmula a la que aplicar las reglas
+        Args:
+            rules: lista de reglas
+            value: fórmula a la que aplicar las reglas
 
-        :return: fórmula resultante de aplicar todas las reglas a la fórmula
+        Returns: 
+            fórmula resultante de aplicar todas las reglas a la fórmula
         """
         return Rule.apply_list_f(rules)(value)
 
@@ -260,10 +270,12 @@ class Rule:
         Devuelve una lista con todas las fórmulas resultantes de aplicar la
         regla en todas las posiciones en las que se puede aplicar.
 
-        :param value: fórmula a la que se le aplica la regla
-        :param traverse_order: tipo de recorrido
+        Args:
+            value: fórmula a la que se le aplica la regla
+            traverse_order: tipo de recorrido
 
-        :return: lista de fórmulas resultantes de aplicar la regla
+        Returns:
+            lista de fórmulas resultantes de aplicar la regla
         """
         positions = [
             i for i, m in enumerate(self.match(value, traverse_order)) if m is not None
@@ -275,9 +287,11 @@ class Rule:
         """
         Utilidad para comprobar si un conjunto de reglas tiene ciclos.
 
-        :param rules: lista de reglas
+        Args:
+            rules: lista de reglas
 
-        :return: True si hay ciclos, False en caso contrario.
+        Returns: 
+            True si hay ciclos, False en caso contrario.
         """
         G = DiGraph()
         for rule in rules:
