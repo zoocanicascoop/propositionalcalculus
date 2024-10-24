@@ -1,3 +1,0 @@
-# Formula
-
-::: propositionalcalculus.formula.Formula
