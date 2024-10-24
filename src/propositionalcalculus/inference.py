@@ -20,12 +20,25 @@ from .formula import (
 
 
 class InferenceRule:
+    """
+    Reglas de inferencia.
+
+    Una regla de inferencia consiste de una serie de premisas de las cuales se
+    puede derivar una conclusión. 
+    """
     def __init__(
         self,
         name: str,
         assumptions: Formulas,
         conclusion: Formula,
     ) -> None:
+        """
+        Constructor de la regla de inferencia.
+
+        :param name: Nombre de la regla.
+        :param assumptions: Premisas de la regla.
+        :param conclusion: Conclusión de la regla.
+        """
         self._name = name
         self._assumptions = formulas_to_list(assumptions)
         self._conclusion = conclusion
@@ -44,7 +57,7 @@ class InferenceRule:
         return f"{assumptions}\n{bar}\n{conclusion}"
 
     def __hash__(self) -> int:
-        """TODO: Decide how to define equality and hash"""
+        # TODO: Decide how to define equality and hash
         return (
             hash(self._name)
             + sum(hash(a) for a in self._assumptions)
@@ -52,7 +65,7 @@ class InferenceRule:
         )
 
     def __eq__(self, other: InferenceRule) -> bool:
-        """TODO: Decide how to define equality and hash"""
+        # TODO: Decide how to define equality and hash
         return (
             self._name == other._name
             and self._assumptions == other._assumptions
@@ -61,22 +74,25 @@ class InferenceRule:
 
     @cached_property
     def arity(self) -> int:
-        """The number of assumptions of the inference rule."""
+        """El número de premisas de la regla de inferencia"""
         return len(self._assumptions)
 
     @cached_property
     def assumptions_vars(self) -> set[Var]:
-        """Set of variables present in the rule assumptions."""
+        """Conjunto de variables presentes en las premisas de la regla"""
         return set().union(*[a.vars for a in self._assumptions])
 
     @cached_property
     def conclusion_vars(self) -> set[Var]:
-        """Set of variables present in the rule conclusion."""
+        """Cojunto de variables presentes en la conclusión de la regla"""
         return self._conclusion.vars
 
     @cached_property
     def is_sound(self) -> bool:
-        """Wether the rule is coherent with the semantics."""
+        """
+        Determina si la regla de inferencia es cohrente con la semántica de 
+        la lógica proposicional.
+        """
         f = Const.TRUE
         for assumption in self._assumptions:
             f = f & assumption
@@ -89,8 +105,27 @@ class InferenceRule:
         conclusion_binding: Binding | None = None,
     ) -> Formula | None:
         """
-        TODO: Devolver mensajes de error según el tipo de fallo de aplicación.
+        La aplicación de la regla consiste en, dadas unas premisas concretas con 
+        la forma (mismo patrón) de las premisas abstractas de la regla, obtener 
+        una conclusión concreta donde se han efectuado las sustituciones a
+        partir del reconocimiento de los patrones en las premisas.
+
+        Es decir, para aplicar la regla:
+
+        - Para cada premisa concreta (las proporcionadas en el parámetro de
+        entrada) se aplica el reconocimiento de patrones con las premisa
+        abstracta (de la regla) y se obtiene un binding.
+        - Se mezclan todos los bindings obtenidos en un único binding global.
+        - Se aplica la sustiución del binding obtenido a la conclusión de la
+          regla.
+
+        :param assumptions: Premisas concretas de la regla.
+        :param conclusion_binding: valor inicial del binding global.
+
+        :return: Conclusión de la regla donde se han hecho las sustituciones
+        obtenidas de las premisas.
         """
+        # TODO: Devolver mensajes de error según el tipo de fallo de aplicación.
 
         assumptions = formulas_to_list(assumptions)
 
@@ -113,14 +148,38 @@ class InferenceRule:
         return self._conclusion.subs(global_binding)
 
     def __call__(self, *assumption_indices: int) -> RuleApplication:
+        """
+        La aplicación de una regla es un tipo de paso de una demostración,
+        codificado mediante la clase RuleApplication.
+
+        Esta implementación de call posibilita generar el paso RuleApplication
+        correspondiente a la aplicación de la regla de inferencia, sin tener que
+        instanciar la clase RuleApplication directamente.
+        """
         return RuleApplication(self, list(assumption_indices))
 
     def specialize(self, binding: dict[Var, Formula]) -> InferenceRule:
+        """
+        Especializar una regla de inferencia consiste en aplicar una sustitución
+        a las premisas y conclusión de la regla.
+
+        :param binding: Binding de la sustitución a aplicar.
+
+        :return: Nueva regla de inferencia especializada.
+        """
         assumptions = list(map(lambda a: a.subs(binding), self._assumptions))
         conclusion = self._conclusion.subs(binding)
         return InferenceRule(self._name + " specialized", assumptions, conclusion)
 
     def is_specialization(self, other: InferenceRule) -> bool:
+        """
+        Determina si la regla es la especialización de otra regla dada.
+
+        :param other: regla a comparar.
+
+        :return: True si la regla es una especialización de la otra regla, False
+            en caso contrario.
+        """
         if len(self._assumptions) != len(other._assumptions):
             return False
         global_binding = {}
@@ -139,6 +198,10 @@ class InferenceRule:
 
 
 class Proof:
+    """
+    Una demostración es una secuencia de pasos. 
+    Cada paso es una instancia del tipo ProofStep.
+    """
     def __init__(
         self,
         rules: set[InferenceRule],
@@ -147,7 +210,17 @@ class Proof:
         conclusion: Formula,
         steps: list[ProofStep],
     ) -> None:
-        assert len(steps) > 0, "La cantidad de pasos debe ser positiva"
+        """
+        Constructor de la demostración.
+
+        :param rules: Conjunto de reglas de inferencia que conforman el sistema
+        de deducción.
+        :param axioms: Lista de axiomas que conforman el sistema de deducción.
+        :param assumptions: Fórmulas que se asumen como verdaderas.
+        :param conclusion: Fórmula que se quiere demostrar.
+        :param steps: Lista de pasos de la demostración.
+        """
+        assert len(steps) > 0, "The amount of steps must be positive"
         self.rules = rules
         self.axioms = axioms
         self.assumptions = formulas_to_list(assumptions)
@@ -164,6 +237,14 @@ class Proof:
         return f"{', '.join(map(str, self.assumptions))} ⊢ {self.conclusion}"
 
     def step_dependencies(self, index: int) -> set[int]:
+        """
+        Devuelve el conjunto de índices de los pasos de los que depende el
+        paso dado por el índice.
+
+        :param index: Índice del paso.
+
+        :return: Conjunto de índices de los pasos de los que depende el paso.
+        """
         match self.steps[index]:
             case RuleApplication(_, indices):
                 return reduce(
@@ -175,6 +256,16 @@ class Proof:
     def step_subproof(
         self, index: int, delete_superflous_assumptions: bool = False
     ) -> Proof:
+        """
+        Devuelve una subdemostración que contiene los pasos necesarios para
+        demostrar la conclusión en el paso dado por el índice.
+
+        :param index: Índice del paso.
+        :param delete_superflous_assumptions: Si es True, se eliminan las
+            asunciones superfluas.
+
+        :return: Subdemostración.
+        """
         new_conclusion = self.state[index]
         assert new_conclusion is not None
         steps_indices = list(self.step_dependencies(index)) + [index]
@@ -212,6 +303,15 @@ class Proof:
 
     @cached_property
     def state(self) -> list[Formula | None]:
+        """
+        Itera por todos los pasos de la demostración y va aplicando los pasos,
+        obteniendo una lista de fórmulas que representan el estado de la
+        demostración después de cada paso. Si en algún paso la aplicación
+        devuelve None, se detiene la iteración y se devuelve la lista hasta
+        ese paso.
+
+        :return: Lista de fórmulas que representan el estado de la demostración.
+        """
         state = []
         for step in self.steps:
             match step:
@@ -227,9 +327,16 @@ class Proof:
 
     @cached_property
     def check(self) -> bool:
+        """
+        Comprueba si la demostración es correcta, es decir, si la última fórmula
+        de la lista de estados es la conclusión de la demostración.
+        """
         return self.state[-1] == self.conclusion
 
     def display(self, highlight_rule: int | None = None):
+        """
+        Muestra la demostración en un panel de Rich.
+        """
         t = Table(show_header=False, box=None)
         t.add_column("Section", vertical="middle", style="bold")
         t.add_column("Content")
@@ -274,6 +381,7 @@ class Proof:
 
     @cached_property
     def used_assumptions(self) -> list[Formula]:
+        """Lista de asunciones usadas en la demostración"""
         result = []
         for step in self.steps:
             if isinstance(step, AssumptionInclusion):
@@ -283,13 +391,24 @@ class Proof:
         return result
 
     def superflous_assumption(self, assumption: Formula) -> bool:
+        """Determina si una premisa es superflua"""
         return assumption not in self.used_assumptions
 
     def delete_superflous_assumptions(self) -> Proof:
+        """
+        Devuelve una demostración equivalente en la que se han eliminado las
+        premisas superfluas.
+        """
         return self.step_subproof(len(self.steps) - 1, True)
 
 
 def proof_mixer(proof1: Proof, proof2: Proof) -> tuple[list[Formula], list[ProofStep]]:
+    """
+    Función que concatena dos demostraciones, eliminando las premisas repetidas
+    y reindexando los pasos de las demostraciones de forma acorde.
+
+    :return: tupla con la nueva lista de premisas y nueva lista de pasos.
+    """
     assert (
         proof1.axioms == proof2.axioms and proof1.rules == proof2.rules
     ), "The proofs axioms and rules must match"
@@ -326,6 +445,10 @@ def proof_mixer(proof1: Proof, proof2: Proof) -> tuple[list[Formula], list[Proof
 
 
 class AssumptionInclusion:
+    """
+    Tipo de paso de una demostración que consiste en incluir una de las premisas
+    de la demostración para ser utilizada.
+    """
     __match_args__ = ("index",)
 
     def __init__(self, index: int):
@@ -343,6 +466,11 @@ Ass = AssumptionInclusion
 
 
 class AxiomSpecialization:
+    """
+    Tipo de paso de una demostración que consiste en incluir un axioma de la
+    teoría en el que se ha realizado una sustitución arbitraria
+    (especialización) mediante un binding.
+    """
     __match_args__ = ("axiom_index", "binding")
 
     def __init__(self, axiom_index: int, binding: Binding) -> None:
@@ -363,6 +491,10 @@ AxS = AxiomSpecialization
 
 
 class RuleApplication:
+    """
+    Tipo de paso de una demostración que consiste en aplicar una regla de
+    inferencia del sistema deductivo que se esté considerando.
+    """
     __match_args__ = ("rule", "assumption_indices")
 
     def __init__(self, rule: InferenceRule, assumption_indices: list[int]) -> None:
