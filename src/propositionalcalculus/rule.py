@@ -14,19 +14,22 @@ def pattern_match(
     traverse_order: OrderType = OrderType.BREADTH_FIRST,
 ) -> Iterator[dict[Var, Formula] | None]:
     """
-    Pattern matching algorithm.
+    Algoritmo de reconocimiento de patrones.
 
-    Given a pattern and a formula, this algorithm finds all occurrencies of the
-    pattern structure in the formula and subformulas, returning an iterator that
-    returns the binding for the current subtree, following a particular
-    traversal order.
+    Dado un patrón y una fórmula, este algoritmo encuentra todas las ocurrencias
+    del la estructura del patrón en la fórmula y sus subfórmulas, devolviendo un
+    iterador que devuelve el binding para el subárbol actual, siguiendo un
+    recorrido de fórmula particular.
 
-    :pattern: the pattern formula
-    :subject: the subject formula on which to search the pattern
-    :traverse_order: the tree order traversal type
+    :param pattern: el patrón a buscar 
+    :param subject: la fórmula en la que busca el patrón
+    :param traverse_order: el tipo de recorrido
+
+    :return: un iterador que devuelve el binding asociado a cada posición, si se
+    ha encontrado el patrón, o None en caso contrario.
     """
 
-    def match_inner(
+    def _match_inner(
         current_pattern: Formula, value: Formula, bindings: dict[Var, Formula]
     ) -> bool:
         match (current_pattern, value):
@@ -43,18 +46,18 @@ def pattern_match(
             case (UnaryOperator(A), UnaryOperator(B)):
                 if current_pattern.__class__ != value.__class__:
                     return False
-                return match_inner(A, B, bindings)
+                return _match_inner(A, B, bindings)
             case (BinaryOperator(A, B), BinaryOperator(C, D)):
                 if current_pattern.__class__ != value.__class__:
                     return False
-                return match_inner(A, C, bindings) and match_inner(B, D, bindings)
+                return _match_inner(A, C, bindings) and _match_inner(B, D, bindings)
             case _:
                 return False
 
     for subformula in subject.traverse(traverse_order):
         assert isinstance(subformula, Formula)
         bindings: dict[Var, Formula] = {}
-        if match_inner(pattern, subformula, bindings):
+        if _match_inner(pattern, subformula, bindings):
             yield bindings
         else:
             yield None
@@ -62,11 +65,19 @@ def pattern_match(
 
 class Rule:
     """
-    Class for defining substitution rules based on pattern matching.
+    Reglas de sustitución basadas en el reconocimiento de patrones.
 
+    Estas reglas consisten de una cabecera y un cuerpo. La aplicación de la
+    regla consiste en buscar todas las ocurrencias del patrón de la cabecera en
+    una fórmula y sustituirlo (una o más veces) por el cuerpo de la regla.
     """
 
     def __init__(self, head: Formula, body: Formula):
+        """ 
+        Constructor de las reglas de sustitución.
+        :param head: cabecera de la regla (patrón que se va a sustituir)
+        :param body: cuerpo de la regla (por lo que se va a sustituir)
+        """
         self.head = head
         self.body = body
         assert self.body.vars.issubset(
@@ -78,20 +89,38 @@ class Rule:
 
     @cached_property
     def is_imp(self) -> bool:
+        """
+        Determina si la regla, convertida a una implicación, es una tautología.
+        """
         return (self.head >> self.body).is_tauto
 
     @cached_property
     def is_equiv(self) -> bool:
+        """
+        Determina si la cabecera de la regla es equivalente al cuerpo de la regla.
+        """
         return ((self.head >> self.body) & (self.body >> self.head)).is_tauto
 
     @cached_property
     def inverse(self) -> Rule:
+        """
+        Regla inversa: regla con la cabecera y el cuerpo intercambiados.
+        Se restringe el uo de esta propiedad a reglas que sean equivalencias.
+        """
         assert self.is_equiv
         return Rule(self.body, self.head)
 
     def match(
         self, value: Formula, traverse_order: OrderType = OrderType.BREADTH_FIRST
     ) -> Iterator[dict[Var, Formula] | None]:
+        """
+        Búsqueda de ocurrencias del patrón de la cabecera en una fórmula dada.
+
+        :param value: fórmula en la que se busca el patrón
+        :param traverse_order: tipo de recorrido
+
+        :return: el iterador devuelto por el proceso de reconocimiento de patrones.
+        """
         return pattern_match(self.head, value, traverse_order)
 
     def apply(
@@ -100,6 +129,16 @@ class Rule:
         pos: int,
         traverse_order: OrderType = OrderType.BREADTH_FIRST,
     ) -> Formula | None:
+        """
+        Aplicación de la regla a una fórmula, en una posición dada.
+
+        :param value: fórmula a la que se le aplica la regla
+        :param pos: posición en la que se aplica la regla
+        :param traverse_order: tipo de recorrido
+
+        :return: la fórmula resultante de aplicar la regla, o None si no se ha
+            podido aplicar.
+        """
         binding = next(islice(self.match(value, traverse_order), pos, pos + 1))
         if binding is None:
             return None
@@ -107,17 +146,18 @@ class Rule:
         result = value.replace_at_pos(pos, new_subformula, traverse_order)
         return result
 
-    def applications(
-        self, value: Formula, traverse_order: OrderType = OrderType.BREADTH_FIRST
-    ) -> list[Formula]:
-        positions = [
-            i for i, m in enumerate(self.match(value, traverse_order)) if m is not None
-        ]
-        return [self.apply(value, pos) for pos in positions]
-
     def apply_first(
         self, value: Formula, traverse_order: OrderType = OrderType.BREADTH_FIRST
     ) -> Formula | None:
+        """
+        Aplicación de la regla a una fórmula, en la primera posición en la que
+        se puede aplicar.
+
+        :param value: fórmula a la que se le aplica la regla
+        :param traverse_order: tipo de recorrido
+        :return: la fórmula resultante de aplicar la regla, o None si no se ha 
+            podido aplicar.
+        """
         # TODO: optimizar para no hacer match dos veces
         pos = next(
             (
@@ -133,7 +173,13 @@ class Rule:
 
     def apply_all(self, value: Formula) -> Formula:
         """
-        Apply all ocurrencies starting from the first one to the next ones.
+        Aplica la regla a una fórmula iterativamente hasta que no se pueda aplicar más.
+        Para evitar bucles infinitos, se comprueba que la cabecera de la regla no
+        aparezca en el cuerpo de la regla.
+
+        :param value: fórmula a la que se le aplica la regla
+
+        :return: la fórmula resultante de aplicar la regla iterativamente.
         """
         assert (
             list(filter(lambda m: m is not None, pattern_match(self.head, self.body)))
@@ -149,6 +195,15 @@ class Rule:
 
     @staticmethod
     def apply_list_f(rules: list[Rule]) -> Callable[[Formula], Formula]:
+        """
+        Utilidad para aplicar una lista de reglas a una fórmula, hasta que ya no
+        se puedan aplicar más reglas.
+        Dada una lista de reglas, devuelve una función que aplica todas las
+        reglas a una función.
+        :param rules: lista de reglas
+        :return: función que dada una fórmula deveulve la fórmula resultante de
+            aplicar todas las reglas de la lista a la fórmula.
+        """
         def f(value: Formula):
             result = value
             while True:
@@ -163,6 +218,10 @@ class Rule:
 
     @staticmethod
     def apply_list_f_(rules: list[Rule]) -> Callable[[Formula], Formula]:
+        """
+        Implementación alternativa de la función apply_list_f, que aplica las
+        reglas en un orden distinto, sin utilizar apply_all.
+        """
         def f(value: Formula):
             result = value
             while True:
@@ -180,10 +239,46 @@ class Rule:
 
     @staticmethod
     def apply_list(rules: list[Rule], value: Formula) -> Formula:
+        """
+        Interfaz alternativa para la función Rule.apply_list_f.
+
+        En lugar de devolver una función, esta función recibe la fórmula a la que
+        aplicar las reglas como parámetro.
+
+        :param rules: lista de reglas
+        :param value: fórmula a la que aplicar las reglas
+
+        :return: fórmula resultante de aplicar todas las reglas a la fórmula
+        """
         return Rule.apply_list_f(rules)(value)
+
+
+    def applications(
+        self, value: Formula, traverse_order: OrderType = OrderType.BREADTH_FIRST
+    ) -> list[Formula]:
+        """
+        Devuelve una lista con todas las fórmulas resultantes de aplicar la
+        regla en todas las posiciones en las que se puede aplicar.
+
+        :param value: fórmula a la que se le aplica la regla
+        :param traverse_order: tipo de recorrido
+
+        :return: lista de fórmulas resultantes de aplicar la regla
+        """
+        positions = [
+            i for i, m in enumerate(self.match(value, traverse_order)) if m is not None
+        ]
+        return [self.apply(value, pos) for pos in positions]
 
     @staticmethod
     def check_cycles(rules: list[Rule]) -> bool:
+        """
+        Utilidad para comprobar si un conjunto de reglas tiene ciclos.
+
+        :param rules: lista de reglas
+
+        :return: True si hay ciclos, False en caso contrario.
+        """
         G = DiGraph()
         for rule in rules:
             G.add_node(rule.head)
@@ -193,7 +288,7 @@ class Rule:
                 apps = ruleB.applications(rule.body)
                 for ruleC in rules:
                     if ruleC.head in apps:
-                        G.add_edge(rule.body,ruleC.head  )
+                        G.add_edge(rule.body, ruleC.head)
         try:
             find_cycle(G)
         except NetworkXNoCycle:
