@@ -27,6 +27,11 @@ Para instalar las dependencias ejecuta
 poetry install
 ```
 
+Una vez instalado poetry deberás incluirlo en el path:
+```bash
+echo "export PATH=\"$HOME/.local/bin/:$PATH\"" >> ~/.bashrc
+```
+
 ### Entorno de desarrollo
 
 Una vez instaladas las dependencias, puedes iniciar un entorno shell donde
