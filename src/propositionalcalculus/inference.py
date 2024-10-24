@@ -33,10 +33,11 @@ class InferenceRule:
         conclusion: Formula,
     ) -> None:
         """
-        Args:
-            name: Nombre de la regla.
-            assumptions: Premisas de la regla.
-            conclusion: Conclusión de la regla.
+        Constructor de la regla de inferencia.
+
+        :param name: Nombre de la regla.
+        :param assumptions: Premisas de la regla.
+        :param conclusion: Conclusión de la regla.
         """
         self._name = name
         self._assumptions = formulas_to_list(assumptions)

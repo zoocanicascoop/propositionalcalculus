@@ -679,10 +679,10 @@ def formulas_to_list(fs: Formulas) -> list[Formula]:
 
 class UnaryOperator(Formula):
     """
+
     Los operadores unarios son aquellos que tienen una única fórmula como
     argumento.
     """
-
     symbol: str
     __match_args__ = ("f",)
 
@@ -797,7 +797,7 @@ class And(BinaryOperator):
 
 
 class Or(BinaryOperator):
-    """
+    """ 
     Or es el operador binario de disyunción.
     """
 

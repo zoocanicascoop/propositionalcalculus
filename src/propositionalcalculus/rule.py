@@ -116,7 +116,7 @@ class Rule:
     ) -> Iterator[dict[Var, Formula] | None]:
         """
         Búsqueda de ocurrencias del patrón de la cabecera en una fórmula dada.
-
+        
         Args:
             value: fórmula en la que se busca el patrón
             traverse_order: tipo de recorrido
@@ -207,6 +207,7 @@ class Rule:
         se puedan aplicar más reglas.
         Dada una lista de reglas, devuelve una función que aplica todas las
         reglas a una función.
+
         Args:
             rules: lista de reglas
         Returns: 
