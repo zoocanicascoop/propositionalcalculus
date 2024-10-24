@@ -15,9 +15,12 @@ def merge_bindings(a: Binding, b: Binding) -> Binding | None:
     Si ambas combinaciones contienen la misma clave con valores diferentes, se
     devuelve None en lugar del binding mezclado (equivalente a un error).
 
-    :param a: binding 
-    :param b: binding 
-    :return: nuevo binding en caso de que no haya conflictos. None en otro caso.
+    Args:
+        a: binding
+        b: binding
+
+    Returns:
+        nuevo binding en caso de que no haya conflictos. None en otro caso.
     """
     for key in a.keys():
         if key in b and a[key] != b[key]:
@@ -27,6 +30,7 @@ def merge_bindings(a: Binding, b: Binding) -> Binding | None:
 
 class OrderType(Enum):
     """Tipos de orden para recorrer un árbol"""
+
     PREORDER = 0
     BREADTH_FIRST = 1
 
@@ -41,9 +45,10 @@ class Formula:
 
     La definición recursiva de las fórmulas está implementada en este módulo
     mediante la dependencia de clases entre esta clase, Formula, y:
-    - Clases Var y Const (casos base de la definición recursiva)
-    - Clase Not (operador unario)
-    - Clases And, Or e Imp (operadores binarios)
+
+    - Clases `Var` y `Const` (casos base de la definición recursiva)
+    - Clase `Not` (operador unario)
+    - Clases `And`, `Or` e `Imp` (operadores binarios)
 
     Los operadores tienen como parámetros de sus constructures otras fórmulas.
     Aquí es dónde se encuentra esta recursividad.
@@ -67,7 +72,7 @@ class Formula:
     @staticmethod
     def parse_polish(string: str, stack: list[Formula] = []) -> Formula | None:
         """
-        Dada una string de una fórmula en notación polaca, construye y devuelve 
+        Dada una string de una fórmula en notación polaca, construye y devuelve
         la fórmula correspondiente.
         """
         string = string.replace(" ", "")
@@ -152,7 +157,9 @@ class Formula:
         Utilidad para llamar a graphviz y renderizar el árbol de la fórmula.
         Se generarán dos ficheros: uno con el código graphviz y otro con la
         renderización en pdf.
-        :param path: ruta donde se guardará el fichero con el código graphviz.
+
+        Args:
+            path: ruta donde se guardará el fichero con el código graphviz.
         """
         import graphviz
         from graphviz.backend.rendering import pathlib
@@ -216,10 +223,13 @@ class Formula:
         """
         Generador aleatorio de representaciones de fórmulas en notación polaca.
 
-        :n_vars: número máximo de variables que incluir
-        :max_depth: profundidad máxima del árbol de la fórmula
-        :include_consts: si se incluyen las constantes T y F en la fórmula.
-        :return: representación en notación polaca de la fórmula generada.
+        Args:
+            n_vars: número máximo de variables que incluir
+            max_depth: profundidad máxima del árbol de la fórmula
+            include_consts: si se incluyen las constantes T y F en la fórmula.
+
+        Returns:
+            representación en notación polaca de la fórmula generada.
         """
         assert max_depth >= 1
         if max_depth == 1:
@@ -277,8 +287,11 @@ class Formula:
         Dado un binding, sustituye las variables de la fórmula por las fórmulas
         correspondientes en el binding.
 
-        :binding: el binding a aplicar en la sustitución.
-        :return: la nueva fórmula en la que se han sustituido las variables.
+        Args:
+            binding: el binding a aplicar en la sustitución.
+
+        Returns:
+            la nueva fórmula en la que se han sustituido las variables.
         """
         match self:
             case Var():
@@ -357,11 +370,13 @@ class Formula:
         """
         Reemplaza la fórmula en una posición determinada por otra fórmula.
 
-        :param pos: posición en la que se va a reemplazar la fórmula.
-        :param f: fórmula por la que se va a reemplazar.
-        :param order_type: tipo de orden en el que se va a recorrer la fórmula.
+        Args:
+            pos: posición en la que se va a reemplazar la fórmula.
+            f: fórmula por la que se va a reemplazar.
+            order_type: tipo de orden en el que se va a recorrer la fórmula.
 
-        :return: la fórmula con la sustitución realizada.
+        Returns:
+            fórmula con la sustitución realizada.
         """
         assert pos < len(self)
         match order_type:
@@ -374,7 +389,7 @@ class Formula:
         self, pos: int, f: Formula, current_pos: int = 0
     ) -> Formula:
         """
-        Reemplaza la fórmula en una posición determinada por otra fórmula, 
+        Reemplaza la fórmula en una posición determinada por otra fórmula,
         siguiendo el orden de preorden.
         """
         if current_pos == pos:
@@ -395,7 +410,7 @@ class Formula:
 
     def replace_at_pos_breadth(self, pos: int, f: Formula) -> Formula:
         """
-        Reemplaza la fórmula en una posición determinada por otra fórmula, 
+        Reemplaza la fórmula en una posición determinada por otra fórmula,
         siguiendo el orden de anchura primero.
         """
         queue = [self]
@@ -571,11 +586,13 @@ class Formula:
         Forma normal conjuntiva de la fórmula.
 
         Se calcula aplicando de forma secuencial las siguientes equivalencias:
-        - ee eliminan todas las implicaciones con subs_imp,
+
+        - se eliminan todas las implicaciones con `subs_imp`,
         - se empujan todas las negaciones hacia abajo en el árbol de la fórmula
-          utilizando push_neg,
-        - se aplica la propiedad distributiva de la disyunción con distribute_or,
-        - se eliminan las constantes redundantes con simp_const.
+          utilizando `push_neg`,
+        - se aplica la propiedad distributiva de la disyunción con
+          `distribute_or`,
+        - se eliminan las constantes redundantes con `simp_const`.
         """
         return self.subs_imp.push_neg.distribute_or.simp_const
 
@@ -584,8 +601,8 @@ class Formula:
         """
         Versión estructurada de la CNF.
 
-        :return: lista de conjuntos de fórmulas simples (negaciones de variables,
-            variables o constantes).
+        Returns: 
+            lista de conjuntos de fórmulas simples (negaciones de variables, variables o constantes).
         """
         self = self.CNF
         result: list[set[Neg | Var | Const]] = list()
@@ -620,7 +637,7 @@ class Formula:
     @staticmethod
     def print_CNF_structured(cnf: list[set[Formula]]) -> str:
         """
-        Función de utilidad para imprimir una fórmula a partir de su CNF 
+        Función de utilidad para imprimir una fórmula a partir de su CNF
         estructurada.
         """
         return "∧".join(
@@ -650,6 +667,7 @@ class Formula:
                 return False
         return True
 
+
 # Tipo auxiliar para representar una fórmula o una lista de fórmulas.
 Formulas = Formula | list[Formula]
 
@@ -661,7 +679,8 @@ def formulas_to_list(fs: Formulas) -> list[Formula]:
 
 class UnaryOperator(Formula):
     """
-    Los operadores unarios son aquellos que tienen una única fórmula como 
+
+    Los operadores unarios son aquellos que tienen una única fórmula como
     argumento.
     """
     symbol: str
@@ -685,6 +704,7 @@ class BinaryOperator(Formula):
     """
     Los operadores binarios son aquellos que tienen dos fórmulas como argumento.
     """
+
     symbol: str
     __match_args__ = ("left", "right")
 
@@ -707,6 +727,7 @@ class Var(Formula):
     Las variables son fórmulas simples, representadas por una letra, que podrá
     tomar valores semánticos de verdadero o falso.
     """
+
     var_names = "ABCDEGHIJKLMNOPQRSVWXYZ"
 
     def __init__(self, name: str):
@@ -741,6 +762,7 @@ class Const(Formula, Enum):
     Las constantes son fórmulas simples que representan valores semánticos fijos
     de verdadero o falso.
     """
+
     FALSE = 0
     TRUE = 1
 
@@ -756,6 +778,7 @@ class Neg(UnaryOperator):
     """
     Neg es el operador unario de negación.
     """
+
     symbol = "¬"
 
     def semantics(self, value: bool) -> bool:
@@ -766,6 +789,7 @@ class And(BinaryOperator):
     """
     And es el operador binario de conjunción.
     """
+
     symbol = "∧"
 
     def semantics(self, left_value: bool, right_value: bool) -> bool:
@@ -776,6 +800,7 @@ class Or(BinaryOperator):
     """ 
     Or es el operador binario de disyunción.
     """
+
     symbol = "∨"
 
     def semantics(self, left_value: bool, right_value: bool) -> bool:
@@ -786,6 +811,7 @@ class Imp(BinaryOperator):
     """
     Imp es el operador binario de implicación.
     """
+
     symbol = "→"
 
     def semantics(self, left_value: bool, right_value: bool) -> bool:

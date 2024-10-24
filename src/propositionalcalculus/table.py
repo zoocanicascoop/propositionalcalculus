@@ -23,9 +23,9 @@ class TableLine:
 
     def __init__(self, f: Formula, ass: Assign, show_ass=True) -> None:
         """
-        Constructor de la línea de la tabla de verdad.
-        :param f: Fórmula de la línea
-        :param ass: Asignación de la línea
+        Args:
+            f: Fórmula de la línea
+            ass: Asignación de la línea
         """
         self.f = f
         self.ass = ass

@@ -119,11 +119,12 @@ class InferenceRule:
         - Se aplica la sustiución del binding obtenido a la conclusión de la
           regla.
 
-        :param assumptions: Premisas concretas de la regla.
-        :param conclusion_binding: valor inicial del binding global.
+        Args:
+            assumptions: Premisas concretas de la regla.
+            conclusion_binding: valor inicial del binding global.
 
-        :return: Conclusión de la regla donde se han hecho las sustituciones
-        obtenidas de las premisas.
+        Returns:
+            Conclusión de la regla donde se han hecho las sustituciones obtenidas de las premisas.
         """
         # TODO: Devolver mensajes de error según el tipo de fallo de aplicación.
 
@@ -163,9 +164,11 @@ class InferenceRule:
         Especializar una regla de inferencia consiste en aplicar una sustitución
         a las premisas y conclusión de la regla.
 
-        :param binding: Binding de la sustitución a aplicar.
+        Args:
+            binding: Binding de la sustitución a aplicar.
 
-        :return: Nueva regla de inferencia especializada.
+        Returns:
+            Nueva regla de inferencia especializada.
         """
         assumptions = list(map(lambda a: a.subs(binding), self._assumptions))
         conclusion = self._conclusion.subs(binding)
@@ -175,10 +178,11 @@ class InferenceRule:
         """
         Determina si la regla es la especialización de otra regla dada.
 
-        :param other: regla a comparar.
+        Args:
+            other: regla a comparar.
 
-        :return: True si la regla es una especialización de la otra regla, False
-            en caso contrario.
+        Returns: 
+            True si la regla es una especialización de la otra regla, False en caso contrario.
         """
         if len(self._assumptions) != len(other._assumptions):
             return False
@@ -211,14 +215,12 @@ class Proof:
         steps: list[ProofStep],
     ) -> None:
         """
-        Constructor de la demostración.
-
-        :param rules: Conjunto de reglas de inferencia que conforman el sistema
-        de deducción.
-        :param axioms: Lista de axiomas que conforman el sistema de deducción.
-        :param assumptions: Fórmulas que se asumen como verdaderas.
-        :param conclusion: Fórmula que se quiere demostrar.
-        :param steps: Lista de pasos de la demostración.
+        Args:
+            rules: Conjunto de reglas de inferencia que conforman el sistema de deducción.
+            axioms: Lista de axiomas que conforman el sistema de deducción.
+            assumptions: Fórmulas que se asumen como verdaderas.
+            conclusion: Fórmula que se quiere demostrar.
+            steps: Lista de pasos de la demostración.
         """
         assert len(steps) > 0, "The amount of steps must be positive"
         self.rules = rules
@@ -241,9 +243,11 @@ class Proof:
         Devuelve el conjunto de índices de los pasos de los que depende el
         paso dado por el índice.
 
-        :param index: Índice del paso.
+        Args:
+            index: Índice del paso.
 
-        :return: Conjunto de índices de los pasos de los que depende el paso.
+        Returns: 
+            Conjunto de índices de los pasos de los que depende el paso.
         """
         match self.steps[index]:
             case RuleApplication(_, indices):
@@ -260,11 +264,12 @@ class Proof:
         Devuelve una subdemostración que contiene los pasos necesarios para
         demostrar la conclusión en el paso dado por el índice.
 
-        :param index: Índice del paso.
-        :param delete_superflous_assumptions: Si es True, se eliminan las
-            asunciones superfluas.
+        Args:
+            index: Índice del paso.
+            delete_superflous_assumptions: Si es True, se eliminan las asunciones superfluas.
 
-        :return: Subdemostración.
+        Returns: 
+            Subdemostración.
         """
         new_conclusion = self.state[index]
         assert new_conclusion is not None
@@ -310,7 +315,8 @@ class Proof:
         devuelve None, se detiene la iteración y se devuelve la lista hasta
         ese paso.
 
-        :return: Lista de fórmulas que representan el estado de la demostración.
+        Returns:
+            Lista de fórmulas que representan el estado de la demostración.
         """
         state = []
         for step in self.steps:
@@ -407,7 +413,8 @@ def proof_mixer(proof1: Proof, proof2: Proof) -> tuple[list[Formula], list[Proof
     Función que concatena dos demostraciones, eliminando las premisas repetidas
     y reindexando los pasos de las demostraciones de forma acorde.
 
-    :return: tupla con la nueva lista de premisas y nueva lista de pasos.
+    Returns:
+        tupla con la nueva lista de premisas y nueva lista de pasos.
     """
     assert (
         proof1.axioms == proof2.axioms and proof1.rules == proof2.rules
